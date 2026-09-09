@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, Pressable, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Accelerometer } from 'expo-sensors';
+import { useAudioPlayer } from 'expo-audio';
+import * as Haptics from 'expo-haptics';
 import { colors } from '../theme/colors';
 import { useSettings } from '../context/SettingsContext';
 import { useWakeFlow } from '../context/WakeFlowContext';
@@ -37,6 +39,8 @@ export default function RingingScreen() {
   const lastMovementTimeRef = useRef<number>(0);
   const progressRef = useRef(wakeFlow.movementProgress);
 
+  const player = useAudioPlayer(require('../../assets/alarm-tone.mp3'));
+
   useEffect(() => {
     progressRef.current = wakeFlow.movementProgress;
   }, [wakeFlow.movementProgress]);
@@ -45,6 +49,32 @@ export default function RingingScreen() {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    try {
+      if (wakeFlow.status === 'ringing') {
+        player.loop = true;
+        player.seekTo(0);
+        player.play();
+      } else {
+        player.pause();
+      }
+    } catch (error) {
+      // Player may already be released if the screen is unmounting. Safe to ignore.
+    }
+  }, [wakeFlow.status]);
+
+  useEffect(() => {
+    if (wakeFlow.status !== 'ringing') return;
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+
+    const interval = setInterval(() => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    }, 2800);
+
+    return () => clearInterval(interval);
+  }, [wakeFlow.status]);
 
   const isMovementComplete = !settings.movementEnabled || wakeFlow.movementProgress >= settings.movementTarget;
 
@@ -132,12 +162,14 @@ export default function RingingScreen() {
 
     if (scanned === settings.wakeBarcode) {
       scanLockRef.current = true;
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setIsScannerOpen(false);
       dismissWake();
       return;
     }
 
     scanLockRef.current = true;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     setWrongBarcodeMessage(`Wrong item. Scan your ${settings.wakeItemName || 'registered wake-up item'}.`);
     setTimeout(() => {
       scanLockRef.current = false;
@@ -158,11 +190,13 @@ export default function RingingScreen() {
 
   const handleConfirmPin = () => {
     if (enteredPin === SNOOZE_PIN) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setEnteredPin('');
       setPinError(false);
       setIsKeypadOpen(false);
       startSnooze();
     } else {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setPinError(true);
       setEnteredPin('');
     }
