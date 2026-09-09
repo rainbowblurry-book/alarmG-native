@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import { useSettings } from '../context/SettingsContext';
+import { useWakeFlow } from '../context/WakeFlowContext';
 
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const FULL_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -10,6 +11,7 @@ const FULL_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 
 export default function AlarmScreen() {
   const insets = useSafeAreaInsets();
   const { settings, updateSettings } = useSettings();
+  const { startPreview } = useWakeFlow();
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -29,7 +31,7 @@ export default function AlarmScreen() {
     if (settings.isArmed) return;
     const isSelected = settings.repeatDays.includes(dayIndex);
     const newDays = isSelected
-      ? settings.repeatDays.filter(d => d !== dayIndex)
+      ? settings.repeatDays.filter((d) => d !== dayIndex)
       : [...settings.repeatDays, dayIndex].sort();
     updateSettings({ repeatDays: newDays });
   };
@@ -44,10 +46,21 @@ export default function AlarmScreen() {
 
   const adjustMinute = (delta: number) => {
     if (settings.isArmed) return;
+
     let newMinute = settings.alarmMinute + delta;
-    if (newMinute > 59) newMinute = 0;
-    if (newMinute < 0) newMinute = 59;
-    updateSettings({ alarmMinute: newMinute });
+    let newHour = settings.alarmHour;
+
+    if (newMinute > 59) {
+      newMinute = 0;
+      newHour += 1;
+      if (newHour > 23) newHour = 0;
+    } else if (newMinute < 0) {
+      newMinute = 59;
+      newHour -= 1;
+      if (newHour < 0) newHour = 23;
+    }
+
+    updateSettings({ alarmHour: newHour, alarmMinute: newMinute });
   };
 
   const toggleArmed = () => {
@@ -56,13 +69,12 @@ export default function AlarmScreen() {
   };
 
   const noDaysSelected = settings.repeatDays.length === 0;
+  const isArmButtonDisabled = noDaysSelected && !settings.isArmed;
 
   return (
     <ScrollView contentContainerStyle={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.clockContainer}>
-        <Text style={styles.clockText}>
-          {formatLiveTime(currentTime)}
-        </Text>
+        <Text style={styles.clockText}>{formatLiveTime(currentTime)}</Text>
       </View>
 
       <View style={styles.card}>
@@ -91,7 +103,7 @@ export default function AlarmScreen() {
               <Text style={styles.adjustButtonText}>+</Text>
             </Pressable>
           </View>
-          
+
           <Text style={styles.timeColon}>:</Text>
 
           <View style={styles.timeSection}>
@@ -121,27 +133,19 @@ export default function AlarmScreen() {
             return (
               <Pressable
                 key={index}
-                style={[
-                  styles.chip,
-                  isSelected && styles.chipActive,
-                  settings.isArmed && styles.chipDisabled
-                ]}
+                style={[styles.chip, isSelected && styles.chipActive, settings.isArmed && styles.chipDisabled]}
                 onPress={() => toggleDay(index)}
                 accessibilityLabel={`Toggle ${FULL_DAY_NAMES[index]}`}
                 accessibilityState={{ selected: isSelected }}
                 disabled={settings.isArmed}
               >
-                <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
-                  {day}
-                </Text>
+                <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>{day}</Text>
               </Pressable>
             );
           })}
         </View>
-        
-        {noDaysSelected && (
-          <Text style={styles.warningText}>No repeat days selected</Text>
-        )}
+
+        {noDaysSelected && <Text style={styles.warningText}>No repeat days selected</Text>}
       </View>
 
       <View style={styles.spacer} />
@@ -149,17 +153,34 @@ export default function AlarmScreen() {
       <Pressable
         style={[
           styles.primaryButton,
-          noDaysSelected && !settings.isArmed ? styles.primaryButtonDisabled : null,
-          settings.isArmed ? styles.primaryButtonCancel : null
+          isArmButtonDisabled ? styles.primaryButtonDisabled : null,
+          settings.isArmed ? styles.primaryButtonCancel : null,
         ]}
         onPress={toggleArmed}
-        disabled={noDaysSelected && !settings.isArmed}
-        accessibilityLabel={settings.isArmed ? "Cancel Alarm" : "Arm Alarm"}
+        disabled={isArmButtonDisabled}
+        accessibilityLabel={settings.isArmed ? 'Cancel Alarm' : 'Arm Alarm'}
+        accessibilityHint={
+          isArmButtonDisabled ? 'Select at least one repeat day before arming the alarm.' : undefined
+        }
       >
-        <Text style={styles.primaryButtonText}>
-          {settings.isArmed ? 'Cancel Alarm' : 'Arm Alarm'}
-        </Text>
+        <Text style={styles.primaryButtonText}>{settings.isArmed ? 'Cancel Alarm' : 'Arm Alarm'}</Text>
       </Pressable>
+
+      {settings.isArmed && (
+        <>
+          <Pressable
+            style={styles.previewButton}
+            onPress={startPreview}
+            accessibilityLabel="Preview Wake-up Flow"
+          >
+            <Text style={styles.previewButtonText}>Preview Wake-up Flow</Text>
+          </Pressable>
+
+          <Text style={styles.previewHint}>
+            This preview simulates the alarm while the app is open. It does not yet run in the background.
+          </Text>
+        </>
+      )}
     </ScrollView>
   );
 }
@@ -185,8 +206,11 @@ const styles = StyleSheet.create({
   chipTextActive: { color: colors.text },
   warningText: { color: colors.amberAccent, marginTop: 16, textAlign: 'center', fontWeight: 'bold' },
   spacer: { flex: 1 },
-  primaryButton: { backgroundColor: colors.amberAccent, borderRadius: 24, paddingVertical: 18, alignItems: 'center', marginBottom: 24 },
+  primaryButton: { backgroundColor: colors.amberAccent, borderRadius: 24, paddingVertical: 18, alignItems: 'center', marginBottom: 16 },
   primaryButtonCancel: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.amberAccent },
   primaryButtonDisabled: { backgroundColor: '#333333', opacity: 0.7 },
-  primaryButtonText: { color: '#ffffff', fontSize: 18, fontWeight: 'bold' }
+  primaryButtonText: { color: '#ffffff', fontSize: 18, fontWeight: 'bold' },
+  previewButton: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.blueAccent, borderRadius: 20, paddingVertical: 14, alignItems: 'center', marginBottom: 8 },
+  previewButtonText: { color: colors.blueAccent, fontSize: 15, fontWeight: 'bold' },
+  previewHint: { color: colors.textSecondary, fontSize: 12, textAlign: 'center', marginBottom: 24, lineHeight: 18 },
 });
