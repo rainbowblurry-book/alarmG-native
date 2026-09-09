@@ -5,4 +5,6 @@ export const colors = {
   textSecondary: '#a0a0a0',
   blueAccent: '#007AFF',
   amberAccent: '#FF9F0A',
+  emeraldAccent: '#10B981',
+  roseAccent: '#F43F5E',
 };
