@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, Pressable, Modal, Linking, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, Pressable, Modal, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { colors } from '../theme/colors';
@@ -11,7 +11,6 @@ export default function SetupScreen() {
   
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(false);
-  const [isRequestingPermission, setIsRequestingPermission] = useState(false);
   const [scanned, setScanned] = useState(false);
   const scanLockRef = useRef(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -23,17 +22,17 @@ export default function SetupScreen() {
   const handleOpenScanner = async () => {
   scanLockRef.current = false;
   setScanned(false);
-  setIsScanning(true);
 
   if (!permission?.granted) {
-    setIsRequestingPermission(true);
+    const result = await requestPermission();
 
-    try {
-      await requestPermission();
-    } finally {
-      setIsRequestingPermission(false);
+    if (!result.granted) {
+      setIsScanning(true);
+      return;
     }
   }
+
+  setIsScanning(true);
 };
 
   const handleBarcodeScanned = (scanningResult: {
@@ -172,12 +171,7 @@ export default function SetupScreen() {
 
       <Modal visible={isScanning} animationType="slide" transparent={false} onRequestClose={() => setIsScanning(false)}>
         <View style={[styles.modalContainer, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-          {isRequestingPermission ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.blueAccent} />
-              <Text style={styles.loadingText}>Requesting camera access…</Text>
-            </View>
-          ) : !permission?.granted ? (
+          {!permission?.granted ? (
             <View style={styles.permissionContainer}>
               <Text style={styles.permissionTitle}>Camera Permission Required</Text>
               <Text style={styles.permissionText}>Camera access is needed to scan your wake-up item.</Text>
@@ -227,32 +221,48 @@ export default function SetupScreen() {
             </View>
           ) : (
             <View style={styles.cameraWrapper}>
-              <CameraView
-                style={StyleSheet.absoluteFill}
-                facing="back"
-                barcodeScannerSettings={{
-                  barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39', 'qr'],
-                }}
-                onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
-              >
-                <View style={styles.cameraOverlay}>
-                  <View style={styles.cameraHeaderBox}>
-                    <Text style={styles.cameraHeaderText}>Scan {settings.wakeItemName}</Text>
-                    <Text style={styles.cameraSubHeaderText}>Position the barcode in the center</Text>
-                  </View>
-                  
-                  <View style={styles.cameraFooter}>
-                    <Pressable 
-                      style={styles.cancelButton} 
-                      onPress={() => setIsScanning(false)}
-                      accessibilityLabel="Cancel barcode scanning"
-                    >
-                      <Text style={styles.cancelButtonText}>Cancel</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              </CameraView>
-            </View>
+  <CameraView
+    style={StyleSheet.absoluteFill}
+    facing="back"
+    barcodeScannerSettings={{
+      barcodeTypes: [
+        'ean13',
+        'ean8',
+        'upc_a',
+        'upc_e',
+        'code128',
+        'code39',
+        'qr',
+      ],
+    }}
+    onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
+  />
+
+  <View
+    style={styles.cameraOverlay}
+    pointerEvents="box-none"
+  >
+    <View style={styles.cameraHeaderBox}>
+      <Text style={styles.cameraHeaderText}>
+        Scan {settings.wakeItemName}
+      </Text>
+
+      <Text style={styles.cameraSubHeaderText}>
+        Position the barcode in the center
+      </Text>
+    </View>
+
+    <View style={styles.cameraFooter}>
+      <Pressable
+        style={styles.cancelButton}
+        onPress={() => setIsScanning(false)}
+        accessibilityLabel="Cancel barcode scanning"
+      >
+        <Text style={styles.cancelButtonText}>Cancel</Text>
+      </Pressable>
+    </View>
+  </View>
+</View>
           )}
         </View>
       </Modal>
@@ -294,8 +304,6 @@ const styles = StyleSheet.create({
   targetValue: { color: colors.text, fontSize: 28, fontWeight: 'bold', marginHorizontal: 24, width: 40, textAlign: 'center' },
 
   modalContainer: { flex: 1, backgroundColor: colors.background },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { color: colors.textSecondary, fontSize: 16, marginTop: 16 },
   permissionContainer: { flex: 1, padding: 24, justifyContent: 'center' },
   permissionTitle: { fontSize: 24, fontWeight: 'bold', color: colors.text, marginBottom: 12, textAlign: 'center' },
   permissionText: { fontSize: 16, color: colors.textSecondary, textAlign: 'center', marginBottom: 32, lineHeight: 24 },
