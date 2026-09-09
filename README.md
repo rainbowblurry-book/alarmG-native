@@ -1,1 +1,0 @@
-To conduct a thorough code review and mental UI/UX visualization of a GitHub repository to determine its readiness for an Android APK build, providing actionable code corrections, identifying missing build components, and calculating a final readiness percentage.
