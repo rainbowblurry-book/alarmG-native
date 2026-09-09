@@ -1,67 +1,99 @@
-import React, { useRef, useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, Pressable, Modal, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { colors } from '../theme/colors';
 import { useSettings } from '../context/SettingsContext';
 
+function validateSnoozePin(pin: string): { isValid: boolean; error?: string } {
+  if (!/^\d{10}$/.test(pin)) {
+    return { isValid: false, error: 'PIN must be exactly 10 digits.' };
+  }
+
+  if (/^(\d)\1{9}$/.test(pin)) {
+    return { isValid: false, error: 'Avoid using the same digit repeated 10 times.' };
+  }
+
+  const sequentialAsc = '01234567890123456789';
+  const sequentialDesc = '98765432109876543210';
+  if (sequentialAsc.includes(pin) || sequentialDesc.includes(pin)) {
+    return { isValid: false, error: 'Avoid simple sequential numbers.' };
+  }
+
+  const pattern2 = pin.slice(0, 2);
+  if (pattern2.repeat(5) === pin) {
+    return { isValid: false, error: 'Avoid simple repeating patterns.' };
+  }
+
+  const uniqueDigits = new Set(pin.split('')).size;
+  if (uniqueDigits < 4) {
+    return { isValid: false, error: `Use at least 4 different digits (currently ${uniqueDigits}).` };
+  }
+
+  return { isValid: true };
+}
+
 export default function SetupScreen() {
   const insets = useSafeAreaInsets();
   const { settings, updateSettings } = useSettings();
-  
+
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(false);
   const [scanned, setScanned] = useState(false);
   const scanLockRef = useRef(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [manualBarcode, setManualBarcode] = useState('');
+  const [retryCount, setRetryCount] = useState(0);
+
+  const [pinDraft, setPinDraft] = useState(settings.snoozePin);
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [pinSaved, setPinSaved] = useState(false);
+
+  useEffect(() => {
+    setPinDraft(settings.snoozePin);
+  }, [settings.snoozePin]);
 
   const isBarcodeConfigured = Boolean(settings.wakeBarcode && settings.wakeBarcode.length > 0);
   const lastFour = isBarcodeConfigured ? settings.wakeBarcode.slice(-4) : '';
 
   const handleOpenScanner = async () => {
-  scanLockRef.current = false;
-  setScanned(false);
+    scanLockRef.current = false;
+    setScanned(false);
 
-  if (!permission?.granted) {
-    const result = await requestPermission();
+    if (!permission?.granted) {
+      const result = await requestPermission();
 
-    if (!result.granted) {
-      setIsScanning(true);
+      if (!result.granted) {
+        setIsScanning(true);
+        return;
+      }
+    }
+
+    setIsScanning(true);
+  };
+
+  const handleBarcodeDetected = (code: string) => {
+    if (scanLockRef.current) {
       return;
     }
-  }
 
-  setIsScanning(true);
-};
+    const trimmed = code.trim();
 
-  const handleBarcodeScanned = (scanningResult: {
-  type: string;
-  data: string;
-}) => {
-  if (scanLockRef.current) {
-    return;
-  }
+    if (!trimmed) {
+      return;
+    }
 
-  const barcode = scanningResult.data.trim();
-
-  if (!barcode) {
-    return;
-  }
-
-  scanLockRef.current = true;
-  setScanned(true);
-  updateSettings({ wakeBarcode: barcode });
-  setIsScanning(false);
-  triggerSuccess();
-};
+    scanLockRef.current = true;
+    setScanned(true);
+    updateSettings({ wakeBarcode: trimmed });
+    setIsScanning(false);
+    triggerSuccess();
+  };
 
   const handleManualSubmit = () => {
     if (!manualBarcode.trim()) return;
-    updateSettings({ wakeBarcode: manualBarcode.trim() });
+    handleBarcodeDetected(manualBarcode.trim());
     setManualBarcode('');
-    setIsScanning(false);
-    triggerSuccess();
   };
 
   const triggerSuccess = () => {
@@ -71,11 +103,29 @@ export default function SetupScreen() {
     }, 4000);
   };
 
+  const handleRetryCamera = () => {
+    setRetryCount((prev) => prev + 1);
+  };
+
   const adjustMovement = (delta: number) => {
     let newTarget = settings.movementTarget + delta;
     if (newTarget < 5) newTarget = 5;
     if (newTarget > 50) newTarget = 50;
     updateSettings({ movementTarget: newTarget });
+  };
+
+  const handleSavePin = () => {
+    const result = validateSnoozePin(pinDraft);
+
+    if (!result.isValid) {
+      setPinError(result.error || 'Invalid PIN.');
+      return;
+    }
+
+    updateSettings({ snoozePin: pinDraft });
+    setPinError(null);
+    setPinSaved(true);
+    setTimeout(() => setPinSaved(false), 3000);
   };
 
   return (
@@ -119,7 +169,7 @@ export default function SetupScreen() {
             </View>
           )}
 
-          <Pressable 
+          <Pressable
             style={styles.scanButton}
             onPress={handleOpenScanner}
             accessibilityLabel="Scan Wake-up Item Barcode"
@@ -129,11 +179,50 @@ export default function SetupScreen() {
         </View>
 
         <View style={styles.card}>
+          <Text style={styles.cardTitle}>Snooze PIN</Text>
+          <Text style={styles.cardDescription}>
+            Enter this 10-digit code during the alarm to snooze instead of scanning right away.
+          </Text>
+
+          <TextInput
+            style={styles.input}
+            value={pinDraft}
+            onChangeText={(text) => {
+              const digitsOnly = text.replace(/\D/g, '').slice(0, 10);
+              setPinDraft(digitsOnly);
+              setPinError(null);
+            }}
+            placeholder="Enter 10-digit PIN"
+            placeholderTextColor={colors.textSecondary}
+            keyboardType="number-pad"
+            maxLength={10}
+            accessibilityLabel="Snooze PIN"
+          />
+
+          {pinError && <Text style={styles.statusMissing}>{pinError}</Text>}
+
+          {pinSaved && (
+            <View style={styles.successBadge}>
+              <Text style={styles.successText}>Snooze PIN saved</Text>
+            </View>
+          )}
+
+          <Pressable
+            style={[styles.scanButton, pinDraft.length !== 10 && styles.scanButtonDisabled]}
+            onPress={handleSavePin}
+            disabled={pinDraft.length !== 10}
+            accessibilityLabel="Save snooze PIN"
+          >
+            <Text style={styles.scanButtonText}>Save PIN</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.card}>
           <Text style={styles.cardTitle}>Movement Mission</Text>
           <Text style={styles.cardDescription}>
             Walk steps away from your bed to dismiss the alarm.
           </Text>
-          
+
           <Pressable
             style={[styles.toggleButton, settings.movementEnabled && styles.toggleButtonActive]}
             onPress={() => updateSettings({ movementEnabled: !settings.movementEnabled })}
@@ -148,16 +237,16 @@ export default function SetupScreen() {
             <View style={styles.targetContainer}>
               <Text style={styles.targetLabel}>Movement target: {settings.movementTarget}</Text>
               <View style={styles.targetControls}>
-                <Pressable 
-                  style={styles.adjustBtn} 
+                <Pressable
+                  style={styles.adjustBtn}
                   onPress={() => adjustMovement(-1)}
                   accessibilityLabel="Decrease movement target"
                 >
                   <Text style={styles.adjustBtnText}>-</Text>
                 </Pressable>
                 <Text style={styles.targetValue}>{settings.movementTarget}</Text>
-                <Pressable 
-                  style={styles.adjustBtn} 
+                <Pressable
+                  style={styles.adjustBtn}
                   onPress={() => adjustMovement(1)}
                   accessibilityLabel="Increase movement target"
                 >
@@ -175,9 +264,9 @@ export default function SetupScreen() {
             <View style={styles.permissionContainer}>
               <Text style={styles.permissionTitle}>Camera Permission Required</Text>
               <Text style={styles.permissionText}>Camera access is needed to scan your wake-up item.</Text>
-              
-              <Pressable 
-                style={styles.blueButton} 
+
+              <Pressable
+                style={styles.blueButton}
                 onPress={() => Linking.openSettings()}
                 accessibilityLabel="Open app settings"
               >
@@ -187,20 +276,23 @@ export default function SetupScreen() {
               <View style={styles.fallbackContainer}>
                 <View style={styles.fallbackHeader}>
                   <Text style={styles.fallbackTitle}>Accessibility fallback</Text>
-                  <Text style={styles.fallbackDesc}>Use this only when camera access is unavailable. It should not be used to bypass the normal physical scanning mission.</Text>
+                  <Text style={styles.fallbackDesc}>
+                    Use this only when camera access is unavailable. It should not be used to bypass the normal
+                    physical scanning mission.
+                  </Text>
                 </View>
                 <TextInput
                   style={styles.input}
                   value={manualBarcode}
                   onChangeText={setManualBarcode}
-                  placeholder="Enter barcode number manually"
+                  placeholder="Enter registered barcode"
                   placeholderTextColor={colors.textSecondary}
                   autoCapitalize="characters"
                   autoCorrect={false}
                   accessibilityLabel="Manual barcode input"
                 />
-                <Pressable 
-                  style={[styles.scanButton, !manualBarcode.trim() && styles.scanButtonDisabled]} 
+                <Pressable
+                  style={[styles.scanButton, !manualBarcode.trim() && styles.scanButtonDisabled]}
                   onPress={handleManualSubmit}
                   disabled={!manualBarcode.trim()}
                   accessibilityLabel="Save manual barcode"
@@ -210,8 +302,8 @@ export default function SetupScreen() {
               </View>
 
               <View style={styles.modalFooter}>
-                <Pressable 
-                  style={styles.cancelButton} 
+                <Pressable
+                  style={styles.cancelButton}
                   onPress={() => setIsScanning(false)}
                   accessibilityLabel="Cancel barcode scanning"
                 >
@@ -221,48 +313,32 @@ export default function SetupScreen() {
             </View>
           ) : (
             <View style={styles.cameraWrapper}>
-  <CameraView
-    style={StyleSheet.absoluteFill}
-    facing="back"
-    barcodeScannerSettings={{
-      barcodeTypes: [
-        'ean13',
-        'ean8',
-        'upc_a',
-        'upc_e',
-        'code128',
-        'code39',
-        'qr',
-      ],
-    }}
-    onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
-  />
+              <CameraView
+                style={StyleSheet.absoluteFill}
+                facing="back"
+                barcodeScannerSettings={{
+                  barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39', 'qr'],
+                }}
+                onBarcodeScanned={scanned ? undefined : (result) => handleBarcodeDetected(result.data)}
+              />
 
-  <View
-    style={styles.cameraOverlay}
-    pointerEvents="box-none"
-  >
-    <View style={styles.cameraHeaderBox}>
-      <Text style={styles.cameraHeaderText}>
-        Scan {settings.wakeItemName}
-      </Text>
+              <View style={styles.cameraOverlay} pointerEvents="box-none">
+                <View style={styles.cameraHeaderBox}>
+                  <Text style={styles.cameraHeaderText}>Scan {settings.wakeItemName}</Text>
+                  <Text style={styles.cameraSubHeaderText}>Position the barcode in the center</Text>
+                </View>
 
-      <Text style={styles.cameraSubHeaderText}>
-        Position the barcode in the center
-      </Text>
-    </View>
-
-    <View style={styles.cameraFooter}>
-      <Pressable
-        style={styles.cancelButton}
-        onPress={() => setIsScanning(false)}
-        accessibilityLabel="Cancel barcode scanning"
-      >
-        <Text style={styles.cancelButtonText}>Cancel</Text>
-      </Pressable>
-    </View>
-  </View>
-</View>
+                <View style={styles.cameraFooter}>
+                  <Pressable
+                    style={styles.cancelButton}
+                    onPress={() => setIsScanning(false)}
+                    accessibilityLabel="Cancel barcode scanning"
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
           )}
         </View>
       </Modal>
@@ -278,15 +354,15 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 8 },
   cardDescription: { fontSize: 14, color: colors.textSecondary, marginBottom: 16, lineHeight: 20 },
   input: { backgroundColor: colors.background, color: colors.text, padding: 16, borderRadius: 12, fontSize: 16, borderWidth: 1, borderColor: '#333' },
-  
+
   statusBox: { marginBottom: 16 },
   statusConfigured: { color: colors.blueAccent, fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
   statusDetail: { color: colors.textSecondary, fontSize: 14 },
-  statusMissing: { color: colors.roseAccent, fontSize: 16, fontWeight: 'bold', marginBottom: 16 },
-  
+  statusMissing: { color: colors.roseAccent, fontSize: 14, fontWeight: 'bold', marginBottom: 12 },
+
   successBadge: { backgroundColor: colors.emeraldAccent, padding: 12, borderRadius: 12, marginBottom: 16, alignItems: 'center' },
   successText: { color: '#000000', fontWeight: 'bold', fontSize: 14 },
-  
+
   scanButton: { backgroundColor: colors.amberAccent, borderRadius: 16, paddingVertical: 16, alignItems: 'center', marginTop: 8 },
   scanButtonDisabled: { opacity: 0.5 },
   scanButtonText: { color: '#000000', fontSize: 16, fontWeight: 'bold' },
@@ -314,7 +390,7 @@ const styles = StyleSheet.create({
   fallbackHeader: { marginBottom: 16 },
   fallbackTitle: { fontSize: 18, fontWeight: 'bold', color: colors.text, marginBottom: 4 },
   fallbackDesc: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
-  
+
   modalFooter: { marginTop: 'auto' },
   cancelButton: { paddingVertical: 16, alignItems: 'center' },
   cancelButtonText: { color: colors.textSecondary, fontSize: 16, fontWeight: 'bold' },
@@ -324,5 +400,5 @@ const styles = StyleSheet.create({
   cameraHeaderBox: { padding: 24, paddingTop: 60, alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' },
   cameraHeaderText: { color: '#ffffff', fontSize: 20, fontWeight: 'bold', marginBottom: 8 },
   cameraSubHeaderText: { color: colors.textSecondary, fontSize: 14 },
-  cameraFooter: { padding: 32, paddingBottom: 48, alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' }
+  cameraFooter: { padding: 32, paddingBottom: 48, alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' },
 });

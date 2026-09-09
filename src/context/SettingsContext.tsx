@@ -10,6 +10,7 @@ export type AlarmSettings = {
   isArmed: boolean;
   wakeItemName: string;
   wakeBarcode: string;
+  snoozePin: string;
   movementEnabled: boolean;
   movementTarget: number;
 };
@@ -21,6 +22,7 @@ const DEFAULT_SETTINGS: AlarmSettings = {
   isArmed: false,
   wakeItemName: 'Bathroom Toothpaste',
   wakeBarcode: '012345678905',
+  snoozePin: '8492017356',
   movementEnabled: true,
   movementTarget: 15,
 };
@@ -43,6 +45,9 @@ function isValidSettings(data: any): data is Partial<AlarmSettings> {
   if ('isArmed' in data && typeof data.isArmed !== 'boolean') return false;
   if ('wakeItemName' in data && typeof data.wakeItemName !== 'string') return false;
   if ('wakeBarcode' in data && typeof data.wakeBarcode !== 'string') return false;
+  if ('snoozePin' in data) {
+    if (typeof data.snoozePin !== 'string' || !/^\d{10}$/.test(data.snoozePin)) return false;
+  }
   if ('movementEnabled' in data && typeof data.movementEnabled !== 'boolean') return false;
   if ('movementTarget' in data) {
     if (typeof data.movementTarget !== 'number' || !Number.isFinite(data.movementTarget) || !Number.isInteger(data.movementTarget) || data.movementTarget <= 0) return false;
@@ -98,9 +103,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         ...newSettings,
       };
 
-      // persist updatedSettings safely
       AsyncStorage.setItem('@wakeup_settings', JSON.stringify(updatedSettings))
-        .catch(error => console.error('Failed to save settings', error));
+        .catch((error) => console.error('Failed to save settings', error));
 
       return updatedSettings;
     });

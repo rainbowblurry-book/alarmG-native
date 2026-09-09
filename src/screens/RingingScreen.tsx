@@ -9,8 +9,6 @@ import { colors } from '../theme/colors';
 import { useSettings } from '../context/SettingsContext';
 import { useWakeFlow } from '../context/WakeFlowContext';
 
-const SNOOZE_PIN = '8492017356';
-
 export default function RingingScreen() {
   const insets = useSafeAreaInsets();
   const { settings } = useSettings();
@@ -189,7 +187,7 @@ export default function RingingScreen() {
   };
 
   const handleConfirmPin = () => {
-    if (enteredPin === SNOOZE_PIN) {
+    if (enteredPin === settings.snoozePin) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setEnteredPin('');
       setPinError(false);
