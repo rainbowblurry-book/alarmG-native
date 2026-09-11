@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, Pressable, Modal, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { colors } from '../theme/colors';
 import { useSettings } from '../context/SettingsContext';
+import { useTheme } from '../context/ThemeContext';
+import { ThemeConfig, SEMANTIC_COLORS } from '../theme/themes';
 
 function validateSnoozePin(pin: string): { isValid: boolean; error?: string } {
   if (!/^\d{10}$/.test(pin)) {
@@ -36,6 +37,8 @@ function validateSnoozePin(pin: string): { isValid: boolean; error?: string } {
 export default function SetupScreen() {
   const insets = useSafeAreaInsets();
   const { settings, updateSettings } = useSettings();
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
 
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(false);
@@ -143,7 +146,7 @@ export default function SetupScreen() {
             value={settings.wakeItemName}
             onChangeText={(text) => updateSettings({ wakeItemName: text })}
             placeholder="e.g. Bathroom Toothpaste"
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={theme.textSecondary}
             accessibilityLabel="Wake-up item name"
           />
         </View>
@@ -193,7 +196,7 @@ export default function SetupScreen() {
               setPinError(null);
             }}
             placeholder="Enter 10-digit PIN"
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={theme.textSecondary}
             keyboardType="number-pad"
             maxLength={10}
             accessibilityLabel="Snooze PIN"
@@ -286,7 +289,7 @@ export default function SetupScreen() {
                   value={manualBarcode}
                   onChangeText={setManualBarcode}
                   placeholder="Enter registered barcode"
-                  placeholderTextColor={colors.textSecondary}
+                  placeholderTextColor={theme.textSecondary}
                   autoCapitalize="characters"
                   autoCorrect={false}
                   accessibilityLabel="Manual barcode input"
@@ -346,59 +349,61 @@ export default function SetupScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  scrollContent: { paddingHorizontal: 16, paddingBottom: 40 },
-  header: { fontSize: 32, fontWeight: 'bold', color: colors.text, marginVertical: 24 },
-  card: { backgroundColor: colors.card, borderRadius: 24, padding: 24, marginBottom: 16 },
-  cardTitle: { fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 8 },
-  cardDescription: { fontSize: 14, color: colors.textSecondary, marginBottom: 16, lineHeight: 20 },
-  input: { backgroundColor: colors.background, color: colors.text, padding: 16, borderRadius: 12, fontSize: 16, borderWidth: 1, borderColor: '#333' },
+function createStyles(theme: ThemeConfig) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.background },
+    scrollContent: { paddingHorizontal: 16, paddingBottom: 40 },
+    header: { fontSize: 32, fontWeight: 'bold', color: theme.text, marginVertical: 24 },
+    card: { backgroundColor: theme.card, borderRadius: 24, padding: 24, marginBottom: 16 },
+    cardTitle: { fontSize: 20, fontWeight: 'bold', color: theme.text, marginBottom: 8 },
+    cardDescription: { fontSize: 14, color: theme.textSecondary, marginBottom: 16, lineHeight: 20 },
+    input: { backgroundColor: theme.background, color: theme.text, padding: 16, borderRadius: 12, fontSize: 16, borderWidth: 1, borderColor: theme.border },
 
-  statusBox: { marginBottom: 16 },
-  statusConfigured: { color: colors.blueAccent, fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
-  statusDetail: { color: colors.textSecondary, fontSize: 14 },
-  statusMissing: { color: colors.roseAccent, fontSize: 14, fontWeight: 'bold', marginBottom: 12 },
+    statusBox: { marginBottom: 16 },
+    statusConfigured: { color: theme.accent, fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
+    statusDetail: { color: theme.textSecondary, fontSize: 14 },
+    statusMissing: { color: SEMANTIC_COLORS.error, fontSize: 14, fontWeight: 'bold', marginBottom: 12 },
 
-  successBadge: { backgroundColor: colors.emeraldAccent, padding: 12, borderRadius: 12, marginBottom: 16, alignItems: 'center' },
-  successText: { color: '#000000', fontWeight: 'bold', fontSize: 14 },
+    successBadge: { backgroundColor: SEMANTIC_COLORS.success, padding: 12, borderRadius: 12, marginBottom: 16, alignItems: 'center' },
+    successText: { color: '#000000', fontWeight: 'bold', fontSize: 14 },
 
-  scanButton: { backgroundColor: colors.amberAccent, borderRadius: 16, paddingVertical: 16, alignItems: 'center', marginTop: 8 },
-  scanButtonDisabled: { opacity: 0.5 },
-  scanButtonText: { color: '#000000', fontSize: 16, fontWeight: 'bold' },
+    scanButton: { backgroundColor: theme.accent, borderRadius: 16, paddingVertical: 16, alignItems: 'center', marginTop: 8 },
+    scanButtonDisabled: { opacity: 0.5 },
+    scanButtonText: { color: theme.accentText, fontSize: 16, fontWeight: 'bold' },
 
-  toggleButton: { alignSelf: 'flex-start', backgroundColor: colors.background, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, borderWidth: 1, borderColor: '#333' },
-  toggleButtonActive: { backgroundColor: colors.blueAccent, borderColor: colors.blueAccent },
-  toggleText: { color: colors.textSecondary, fontSize: 16, fontWeight: 'bold' },
-  toggleTextActive: { color: '#ffffff' },
+    toggleButton: { alignSelf: 'flex-start', backgroundColor: theme.background, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, borderWidth: 1, borderColor: theme.border },
+    toggleButtonActive: { backgroundColor: theme.accent, borderColor: theme.accent },
+    toggleText: { color: theme.textSecondary, fontSize: 16, fontWeight: 'bold' },
+    toggleTextActive: { color: theme.accentText },
 
-  targetContainer: { marginTop: 24, padding: 16, backgroundColor: colors.background, borderRadius: 16 },
-  targetLabel: { color: colors.textSecondary, fontSize: 14, marginBottom: 12, textAlign: 'center' },
-  targetControls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  adjustBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' },
-  adjustBtnText: { color: colors.blueAccent, fontSize: 24, fontWeight: 'bold' },
-  targetValue: { color: colors.text, fontSize: 28, fontWeight: 'bold', marginHorizontal: 24, width: 40, textAlign: 'center' },
+    targetContainer: { marginTop: 24, padding: 16, backgroundColor: theme.background, borderRadius: 16 },
+    targetLabel: { color: theme.textSecondary, fontSize: 14, marginBottom: 12, textAlign: 'center' },
+    targetControls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+    adjustBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: theme.card, alignItems: 'center', justifyContent: 'center' },
+    adjustBtnText: { color: theme.accent, fontSize: 24, fontWeight: 'bold' },
+    targetValue: { color: theme.text, fontSize: 28, fontWeight: 'bold', marginHorizontal: 24, width: 40, textAlign: 'center' },
 
-  modalContainer: { flex: 1, backgroundColor: colors.background },
-  permissionContainer: { flex: 1, padding: 24, justifyContent: 'center' },
-  permissionTitle: { fontSize: 24, fontWeight: 'bold', color: colors.text, marginBottom: 12, textAlign: 'center' },
-  permissionText: { fontSize: 16, color: colors.textSecondary, textAlign: 'center', marginBottom: 32, lineHeight: 24 },
-  blueButton: { backgroundColor: colors.blueAccent, paddingVertical: 16, borderRadius: 16, alignItems: 'center', marginBottom: 40 },
-  blueButtonText: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' },
+    modalContainer: { flex: 1, backgroundColor: theme.background },
+    permissionContainer: { flex: 1, padding: 24, justifyContent: 'center' },
+    permissionTitle: { fontSize: 24, fontWeight: 'bold', color: theme.text, marginBottom: 12, textAlign: 'center' },
+    permissionText: { fontSize: 16, color: theme.textSecondary, textAlign: 'center', marginBottom: 32, lineHeight: 24 },
+    blueButton: { backgroundColor: theme.accent, paddingVertical: 16, borderRadius: 16, alignItems: 'center', marginBottom: 40 },
+    blueButtonText: { color: theme.accentText, fontSize: 16, fontWeight: 'bold' },
 
-  fallbackContainer: { backgroundColor: colors.card, padding: 20, borderRadius: 20, marginBottom: 40 },
-  fallbackHeader: { marginBottom: 16 },
-  fallbackTitle: { fontSize: 18, fontWeight: 'bold', color: colors.text, marginBottom: 4 },
-  fallbackDesc: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
+    fallbackContainer: { backgroundColor: theme.card, padding: 20, borderRadius: 20, marginBottom: 40 },
+    fallbackHeader: { marginBottom: 16 },
+    fallbackTitle: { fontSize: 18, fontWeight: 'bold', color: theme.text, marginBottom: 4 },
+    fallbackDesc: { fontSize: 14, color: theme.textSecondary, lineHeight: 20 },
 
-  modalFooter: { marginTop: 'auto' },
-  cancelButton: { paddingVertical: 16, alignItems: 'center' },
-  cancelButtonText: { color: colors.textSecondary, fontSize: 16, fontWeight: 'bold' },
+    modalFooter: { marginTop: 'auto' },
+    cancelButton: { paddingVertical: 16, alignItems: 'center' },
+    cancelButtonText: { color: theme.textSecondary, fontSize: 16, fontWeight: 'bold' },
 
-  cameraWrapper: { flex: 1, backgroundColor: '#000' },
-  cameraOverlay: { flex: 1, justifyContent: 'space-between', backgroundColor: 'rgba(0,0,0,0.3)' },
-  cameraHeaderBox: { padding: 24, paddingTop: 60, alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' },
-  cameraHeaderText: { color: '#ffffff', fontSize: 20, fontWeight: 'bold', marginBottom: 8 },
-  cameraSubHeaderText: { color: colors.textSecondary, fontSize: 14 },
-  cameraFooter: { padding: 32, paddingBottom: 48, alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' },
-});
+    cameraWrapper: { flex: 1, backgroundColor: '#000' },
+    cameraOverlay: { flex: 1, justifyContent: 'space-between', backgroundColor: 'rgba(0,0,0,0.3)' },
+    cameraHeaderBox: { padding: 24, paddingTop: 60, alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' },
+    cameraHeaderText: { color: '#ffffff', fontSize: 20, fontWeight: 'bold', marginBottom: 8 },
+    cameraSubHeaderText: { color: theme.textSecondary, fontSize: 14 },
+    cameraFooter: { padding: 32, paddingBottom: 48, alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' },
+  });
+}

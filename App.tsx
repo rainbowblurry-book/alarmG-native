@@ -108,6 +108,7 @@ function useNotificationResponseListener() {
         startPreview();
         dismissAlarmNotification();
       }
+      Notifications.clearLastNotificationResponseAsync();
     });
   }, []);
 

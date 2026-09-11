@@ -17,6 +17,12 @@ export interface ThemeConfig {
   ringingGradient: string[];
 }
 
+export const SEMANTIC_COLORS = {
+  warning: '#F59E0B',
+  error: '#F43F5E',
+  success: '#10B981',
+};
+
 export const THEMES: Record<ThemeId, ThemeConfig> = {
   minimal: {
     id: 'minimal',

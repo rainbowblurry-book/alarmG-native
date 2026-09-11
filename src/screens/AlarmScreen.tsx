@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '../theme/colors';
 import { useSettings } from '../context/SettingsContext';
 import { useWakeFlow } from '../context/WakeFlowContext';
+import { useTheme } from '../context/ThemeContext';
+import { ThemeConfig, SEMANTIC_COLORS } from '../theme/themes';
 
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const FULL_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -12,7 +13,10 @@ export default function AlarmScreen() {
   const insets = useSafeAreaInsets();
   const { settings, updateSettings } = useSettings();
   const { startPreview } = useWakeFlow();
+  const { theme } = useTheme();
   const [currentTime, setCurrentTime] = useState(new Date());
+
+  const styles = createStyles(theme);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -163,7 +167,9 @@ export default function AlarmScreen() {
           isArmButtonDisabled ? 'Select at least one repeat day before arming the alarm.' : undefined
         }
       >
-        <Text style={styles.primaryButtonText}>{settings.isArmed ? 'Cancel Alarm' : 'Arm Alarm'}</Text>
+        <Text style={[styles.primaryButtonText, settings.isArmed && { color: theme.accent }]}>
+          {settings.isArmed ? 'Cancel Alarm' : 'Arm Alarm'}
+        </Text>
       </Pressable>
 
       {settings.isArmed && (
@@ -185,32 +191,34 @@ export default function AlarmScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flexGrow: 1, backgroundColor: colors.background, paddingHorizontal: 16 },
-  clockContainer: { alignItems: 'center', marginVertical: 40, justifyContent: 'center' },
-  clockText: { fontSize: 80, fontWeight: 'bold', color: colors.text, letterSpacing: -2 },
-  card: { backgroundColor: colors.card, borderRadius: 24, padding: 24, marginBottom: 24 },
-  cardTitle: { fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 4 },
-  cardSubtitle: { fontSize: 14, color: colors.textSecondary, marginBottom: 24 },
-  timeControlsContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
-  timeSection: { alignItems: 'center' },
-  alarmTimeText: { fontSize: 48, fontWeight: 'bold', color: colors.text, marginVertical: 8 },
-  adjustButton: { backgroundColor: colors.background, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  adjustButtonText: { color: colors.blueAccent, fontSize: 24, fontWeight: 'bold' },
-  timeColon: { fontSize: 48, fontWeight: 'bold', color: colors.text, marginHorizontal: 16 },
-  chipContainer: { flexDirection: 'row', justifyContent: 'space-between' },
-  chip: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
-  chipActive: { backgroundColor: colors.blueAccent },
-  chipDisabled: { opacity: 0.5 },
-  chipText: { color: colors.textSecondary, fontWeight: '600', fontSize: 16 },
-  chipTextActive: { color: colors.text },
-  warningText: { color: colors.amberAccent, marginTop: 16, textAlign: 'center', fontWeight: 'bold' },
-  spacer: { flex: 1 },
-  primaryButton: { backgroundColor: colors.amberAccent, borderRadius: 24, paddingVertical: 18, alignItems: 'center', marginBottom: 16 },
-  primaryButtonCancel: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.amberAccent },
-  primaryButtonDisabled: { backgroundColor: '#333333', opacity: 0.7 },
-  primaryButtonText: { color: '#ffffff', fontSize: 18, fontWeight: 'bold' },
-  previewButton: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.blueAccent, borderRadius: 20, paddingVertical: 14, alignItems: 'center', marginBottom: 8 },
-  previewButtonText: { color: colors.blueAccent, fontSize: 15, fontWeight: 'bold' },
-  previewHint: { color: colors.textSecondary, fontSize: 12, textAlign: 'center', marginBottom: 24, lineHeight: 18 },
-});
+function createStyles(theme: ThemeConfig) {
+  return StyleSheet.create({
+    container: { flexGrow: 1, backgroundColor: theme.background, paddingHorizontal: 16 },
+    clockContainer: { alignItems: 'center', marginVertical: 40, justifyContent: 'center' },
+    clockText: { fontSize: 80, fontWeight: 'bold', color: theme.text, letterSpacing: -2 },
+    card: { backgroundColor: theme.card, borderRadius: 24, padding: 24, marginBottom: 24 },
+    cardTitle: { fontSize: 20, fontWeight: 'bold', color: theme.text, marginBottom: 4 },
+    cardSubtitle: { fontSize: 14, color: theme.textSecondary, marginBottom: 24 },
+    timeControlsContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
+    timeSection: { alignItems: 'center' },
+    alarmTimeText: { fontSize: 48, fontWeight: 'bold', color: theme.text, marginVertical: 8 },
+    adjustButton: { backgroundColor: theme.background, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+    adjustButtonText: { color: theme.accent, fontSize: 24, fontWeight: 'bold' },
+    timeColon: { fontSize: 48, fontWeight: 'bold', color: theme.text, marginHorizontal: 16 },
+    chipContainer: { flexDirection: 'row', justifyContent: 'space-between' },
+    chip: { width: 40, height: 40, borderRadius: 20, backgroundColor: theme.background, alignItems: 'center', justifyContent: 'center' },
+    chipActive: { backgroundColor: theme.accent },
+    chipDisabled: { opacity: 0.5 },
+    chipText: { color: theme.textSecondary, fontWeight: '600', fontSize: 16 },
+    chipTextActive: { color: theme.accentText },
+    warningText: { color: SEMANTIC_COLORS.warning, marginTop: 16, textAlign: 'center', fontWeight: 'bold' },
+    spacer: { flex: 1 },
+    primaryButton: { backgroundColor: theme.accent, borderRadius: 24, paddingVertical: 18, alignItems: 'center', marginBottom: 16 },
+    primaryButtonCancel: { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.accent },
+    primaryButtonDisabled: { backgroundColor: '#333333', opacity: 0.7 },
+    primaryButtonText: { color: theme.accentText, fontSize: 18, fontWeight: 'bold' },
+    previewButton: { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.accent, borderRadius: 20, paddingVertical: 14, alignItems: 'center', marginBottom: 8 },
+    previewButtonText: { color: theme.accent, fontSize: 15, fontWeight: 'bold' },
+    previewHint: { color: theme.textSecondary, fontSize: 12, textAlign: 'center', marginBottom: 24, lineHeight: 18 },
+  });
+}
