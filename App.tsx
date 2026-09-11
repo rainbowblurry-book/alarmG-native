@@ -2,9 +2,20 @@ import React, { useEffect, useRef } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
+import {
+  useFonts as usePlusJakartaSans,
+  PlusJakartaSans_400Regular,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+} from '@expo-google-fonts/plus-jakarta-sans';
+import { useFonts as useSyne, Syne_700Bold, Syne_800ExtraBold } from '@expo-google-fonts/syne';
+import { useFonts as useOrbitron, Orbitron_700Bold } from '@expo-google-fonts/orbitron';
+import { useFonts as useComfortaa, Comfortaa_700Bold } from '@expo-google-fonts/comfortaa';
+import { useFonts as useCinzel, Cinzel_700Bold } from '@expo-google-fonts/cinzel';
 import AppNavigator from './src/navigation/AppNavigator';
 import { SettingsProvider, useSettings } from './src/context/SettingsContext';
 import { WakeFlowProvider, useWakeFlow } from './src/context/WakeFlowContext';
+import { ThemeProvider } from './src/context/ThemeContext';
 import RingingScreen from './src/screens/RingingScreen';
 import {
   ensureAlarmPermissions,
@@ -133,13 +144,32 @@ function RootContent() {
 }
 
 export default function App() {
+  const [plusJakartaLoaded] = usePlusJakartaSans({
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+  });
+  const [syneLoaded] = useSyne({ Syne_700Bold, Syne_800ExtraBold });
+  const [orbitronLoaded] = useOrbitron({ Orbitron_700Bold });
+  const [comfortaaLoaded] = useComfortaa({ Comfortaa_700Bold });
+  const [cinzelLoaded] = useCinzel({ Cinzel_700Bold });
+
+  const fontsLoaded =
+    plusJakartaLoaded && syneLoaded && orbitronLoaded && comfortaaLoaded && cinzelLoaded;
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
   return (
     <SafeAreaProvider>
-      <SettingsProvider>
-        <WakeFlowProvider>
-          <RootContent />
-        </WakeFlowProvider>
-      </SettingsProvider>
+      <ThemeProvider>
+        <SettingsProvider>
+          <WakeFlowProvider>
+            <RootContent />
+          </WakeFlowProvider>
+        </SettingsProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }
