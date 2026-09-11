@@ -14,7 +14,7 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true
-   },
+    },
     "android": {
       "package": "com.rainbowblurry.wakeupnative",
       "adaptiveIcon": {
@@ -28,7 +28,12 @@
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
-        "android.permission.CAMERA"
+        "android.permission.CAMERA",
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.VIBRATE",
+        "android.permission.WAKE_LOCK",
+        "android.permission.USE_FULL_SCREEN_INTENT"
       ]
     },
     "web": {
@@ -41,7 +46,9 @@
         {
           "cameraPermission": "ClockGuard needs camera access to scan your registered wake-up item barcode."
         }
-      ]
+      ],
+      "expo-notifications",
+      "./plugins/withAlarmManifest.js"
     ],
     "extra": {
       "eas": {
