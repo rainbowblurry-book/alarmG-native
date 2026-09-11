@@ -5,6 +5,7 @@ import AlarmScreen from '../screens/AlarmScreen';
 import SetupScreen from '../screens/SetupScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import { colors } from '../theme/colors';
+import { Image } from 'react-native';
 
 const Tab = createBottomTabNavigator();
 
@@ -38,7 +39,18 @@ export default function AppNavigator() {
         },
       })}
     >
-      <Tab.Screen name="Alarm" component={AlarmScreen} />
+      <Tab.Screen
+  name="Alarm"
+  component={AlarmScreen}
+  options={{
+    tabBarIcon: ({ size }) => (
+      <Image
+        source={require('../../assets/tab-icon-alarm.png')}
+        style={{ width: size, height: size, resizeMode: 'contain' }}
+      />
+    ),
+  }}
+/>
       <Tab.Screen name="Setup" component={SetupScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>

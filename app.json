@@ -1,20 +1,25 @@
 {
   "expo": {
-    "name": "alarmG-native",
-    "slug": "alarmG-native",
+    "name": "ClockGuard",
+    "slug": "ClockGuard",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#162748"
+    },
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true
-    },
+   },
     "android": {
       "package": "com.rainbowblurry.wakeupnative",
       "adaptiveIcon": {
         "backgroundColor": "#0a0a0a",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
+        "foregroundImage": "./assets/adaptive-icon-foreground.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
@@ -34,7 +39,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "WakeUp needs camera access to scan your registered wake-up item barcode."
+          "cameraPermission": "ClockGuard needs camera access to scan your registered wake-up item barcode."
         }
       ]
     ],
