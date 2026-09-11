@@ -11,6 +11,7 @@ import {
   setupAlarmChannel,
   scheduleAlarmNotification,
   cancelScheduledAlarm,
+  dismissAlarmNotification,
   ALARM_NOTIFICATION_ID,
 } from './src/services/alarmScheduler';
 
@@ -94,6 +95,7 @@ function useNotificationResponseListener() {
         wakeFlow.status === 'idle'
       ) {
         startPreview();
+        dismissAlarmNotification();
       }
     });
   }, []);
@@ -105,6 +107,7 @@ function useNotificationResponseListener() {
         wakeFlow.status === 'idle'
       ) {
         startPreview();
+        dismissAlarmNotification();
       }
     });
 

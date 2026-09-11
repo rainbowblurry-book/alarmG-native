@@ -23,7 +23,7 @@ export async function setupAlarmChannel(): Promise<void> {
   await Notifications.setNotificationChannelAsync(ALARM_CHANNEL_ID, {
     name: 'Alarm',
     importance: Notifications.AndroidImportance.MAX,
-    sound: 'default',
+    sound: true,
     vibrationPattern: [0, 500, 250, 500],
     lightColor: '#F5A623',
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
@@ -100,6 +100,10 @@ export async function scheduleAlarmNotification(
 
 export async function cancelScheduledAlarm(): Promise<void> {
   await Notifications.cancelScheduledNotificationAsync(ALARM_NOTIFICATION_ID).catch(() => {});
+}
+
+export async function dismissAlarmNotification(): Promise<void> {
+  await Notifications.dismissNotificationAsync(ALARM_NOTIFICATION_ID).catch(() => {});
 }
 
 export { ALARM_NOTIFICATION_ID, ALARM_CATEGORY_ID };
