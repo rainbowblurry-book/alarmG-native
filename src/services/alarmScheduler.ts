@@ -85,7 +85,6 @@ export async function scheduleAlarmNotification(
       body: wakeItemName
         ? `Scan your ${wakeItemName} to disarm.`
         : 'Complete your wake-up mission to disarm.',
-      sound: 'default',
       priority: Notifications.AndroidNotificationPriority.MAX,
       categoryIdentifier: ALARM_CATEGORY_ID,
       sticky: true,

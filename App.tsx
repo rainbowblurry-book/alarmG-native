@@ -11,6 +11,7 @@ import {
   setupAlarmChannel,
   scheduleAlarmNotification,
   cancelScheduledAlarm,
+  ALARM_NOTIFICATION_ID,
 } from './src/services/alarmScheduler';
 
 Notifications.setNotificationHandler({
@@ -81,10 +82,28 @@ function useBackgroundAlarmScheduler() {
 
 function useNotificationResponseListener() {
   const { wakeFlow, startPreview } = useWakeFlow();
+  const handledColdStartRef = useRef(false);
 
   useEffect(() => {
-    const subscription = Notifications.addNotificationResponseReceivedListener(() => {
-      if (wakeFlow.status === 'idle') {
+    if (handledColdStartRef.current) return;
+    handledColdStartRef.current = true;
+
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (
+        response?.notification.request.identifier === ALARM_NOTIFICATION_ID &&
+        wakeFlow.status === 'idle'
+      ) {
+        startPreview();
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      if (
+        response.notification.request.identifier === ALARM_NOTIFICATION_ID &&
+        wakeFlow.status === 'idle'
+      ) {
         startPreview();
       }
     });
