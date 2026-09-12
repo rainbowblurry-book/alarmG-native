@@ -146,7 +146,7 @@ function createStyles(theme: ThemeConfig) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.background, paddingHorizontal: 16 },
     scrollContent: { paddingBottom: 40 },
-    header: { fontSize: 32, fontWeight: 'bold', color: theme.text, marginVertical: 24 },
+    header: { fontSize: 32, fontWeight: 'bold', color: theme.text, marginVertical: 24, fontFamily: theme.fontFamily },
     sectionLabel: {
       fontSize: 12,
       fontWeight: '700',
@@ -155,6 +155,7 @@ function createStyles(theme: ThemeConfig) {
       marginBottom: 10,
       marginTop: 4,
       textTransform: 'uppercase',
+      fontFamily: theme.fontFamily,
     },
     devSectionLabel: {
       color: theme.accentSecondary || theme.accent,
@@ -170,8 +171,8 @@ function createStyles(theme: ThemeConfig) {
       borderStyle: 'dashed',
       borderColor: theme.accentSecondary || theme.accent,
     },
-    cardTitle: { fontSize: 20, fontWeight: 'bold', color: theme.text, marginBottom: 8 },
-    cardDescription: { fontSize: 14, color: theme.textSecondary, marginBottom: 20, lineHeight: 20 },
+    cardTitle: { fontSize: 20, fontWeight: 'bold', color: theme.text, marginBottom: 8, fontFamily: theme.fontFamily },
+    cardDescription: { fontSize: 14, color: theme.textSecondary, marginBottom: 20, lineHeight: 20, fontFamily: theme.fontFamily },
     themeGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -195,6 +196,7 @@ function createStyles(theme: ThemeConfig) {
       fontWeight: '600',
       color: theme.textSecondary,
       textAlign: 'center',
+      fontFamily: theme.fontFamily,
     },
     themeTagline: {
       fontSize: 11,
@@ -202,10 +204,11 @@ function createStyles(theme: ThemeConfig) {
       textAlign: 'center',
       opacity: 0.7,
       marginTop: 2,
+      fontFamily: theme.fontFamily,
     },
     settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
-    settingLabel: { color: theme.textSecondary, fontSize: 16 },
-    settingValue: { color: theme.accent, fontSize: 16, fontWeight: 'bold' },
+    settingLabel: { color: theme.textSecondary, fontSize: 16, fontFamily: theme.fontFamily },
+    settingValue: { color: theme.accent, fontSize: 16, fontWeight: 'bold', fontFamily: theme.fontFamily },
     resetButton: {
       marginTop: 4,
       marginBottom: 16,
@@ -216,15 +219,15 @@ function createStyles(theme: ThemeConfig) {
       borderWidth: 1,
       borderColor: '#ff4444',
     },
-    resetButtonText: { color: '#ff4444', fontSize: 16, fontWeight: 'bold' },
+    resetButtonText: { color: '#ff4444', fontSize: 16, fontWeight: 'bold', fontFamily: theme.fontFamily },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.7)', justifyContent: 'center', alignItems: 'center', padding: 24 },
     modalContent: { backgroundColor: theme.card, borderRadius: 24, padding: 24, width: '100%' },
-    modalTitle: { fontSize: 22, fontWeight: 'bold', color: theme.text, marginBottom: 12 },
-    modalBody: { fontSize: 16, color: theme.textSecondary, lineHeight: 24, marginBottom: 24 },
+    modalTitle: { fontSize: 22, fontWeight: 'bold', color: theme.text, marginBottom: 12, fontFamily: theme.fontFamily },
+    modalBody: { fontSize: 16, color: theme.textSecondary, lineHeight: 24, marginBottom: 24, fontFamily: theme.fontFamily },
     modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
     modalButton: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 12, backgroundColor: theme.background },
     modalButtonDanger: { backgroundColor: '#ff4444' },
-    modalButtonText: { color: theme.text, fontSize: 16, fontWeight: 'bold' },
-    modalButtonTextDanger: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' },
+    modalButtonText: { color: theme.text, fontSize: 16, fontWeight: 'bold', fontFamily: theme.fontFamily },
+    modalButtonTextDanger: { color: '#ffffff', fontSize: 16, fontWeight: 'bold', fontFamily: theme.fontFamily },
   });
 }
