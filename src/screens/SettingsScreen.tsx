@@ -193,8 +193,14 @@ function createStyles(theme: ThemeConfig) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.background },
     hero: { paddingHorizontal: 24, paddingBottom: 24, borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
-    heroLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 2, color: `${theme.accentText}CC`, marginBottom: 6 },
-    heroTitle: { fontSize: 30, fontWeight: '800', color: theme.accentText, fontFamily: theme.fontFamily },
+    heroLabel: {
+      fontSize: 12, fontWeight: '800', letterSpacing: 2, color: `${theme.text}CC`, marginBottom: 6,
+      textShadowColor: 'rgba(0,0,0,0.35)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
+    },
+    heroTitle: {
+      fontSize: 30, fontWeight: '800', color: theme.text, fontFamily: theme.fontFamily,
+      textShadowColor: 'rgba(0,0,0,0.35)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
+    },
 
     scrollContent: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40 },
 

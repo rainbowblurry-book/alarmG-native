@@ -112,7 +112,7 @@ export default function AlarmScreen() {
           <Ionicons
             name={settings.isArmed ? 'lock-closed' : 'time-outline'}
             size={13}
-            color={theme.accentText}
+            color={theme.text}
           />
           <Text style={styles.heroPillText}>
             {String(settings.alarmHour).padStart(2, '0')}:{String(settings.alarmMinute).padStart(2, '0')} ·{' '}
@@ -136,9 +136,7 @@ export default function AlarmScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.cardTitle}>Wake-up time</Text>
-                <Text style={styles.cardCaption}>
-                  {settings.isArmed ? 'Locked while armed' : 'Tap the digits to type, or use +/-'}
-                </Text>
+                {settings.isArmed && <Text style={styles.cardCaption}>Locked while armed</Text>}
               </View>
             </View>
 
@@ -305,15 +303,24 @@ function createStyles(theme: ThemeConfig) {
     container: { flexGrow: 1, backgroundColor: theme.background },
     body: { paddingHorizontal: 16, paddingTop: 20 },
 
-    // Hero band — full theme-color gradient, the "wow" surface. Font applied big & bold only here.
+    // Hero band — full theme-color gradient, the "wow" surface.
+    // Uses theme.text (always light, made for dark backgrounds) instead of
+    // theme.accentText (which is dark for Amber/Neon/Blossom, causing low
+    // contrast against the gradient). Text-shadow adds extra legibility.
     hero: { paddingBottom: 28, paddingHorizontal: 24, alignItems: 'center', borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
-    heroLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 2, color: `${theme.accentText}CC`, marginBottom: 6 },
-    heroClock: { fontSize: 76, fontWeight: '800', color: theme.accentText, letterSpacing: -2, fontFamily: theme.fontFamily },
+    heroLabel: {
+      fontSize: 12, fontWeight: '800', letterSpacing: 2, color: `${theme.text}CC`, marginBottom: 6,
+      textShadowColor: 'rgba(0,0,0,0.35)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
+    },
+    heroClock: {
+      fontSize: 76, fontWeight: '800', color: theme.text, letterSpacing: -2, fontFamily: theme.fontFamily,
+      textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8,
+    },
     heroPill: {
       flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14,
-      backgroundColor: 'rgba(0,0,0,0.25)', paddingHorizontal: 14, paddingVertical: 7, borderRadius: SHAPE.full,
+      backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 14, paddingVertical: 7, borderRadius: SHAPE.full,
     },
-    heroPillText: { color: theme.accentText, fontSize: 12, fontWeight: '700' },
+    heroPillText: { color: theme.text, fontSize: 12, fontWeight: '700' },
 
     card: { flexDirection: 'row', backgroundColor: theme.card, borderRadius: SHAPE.xl, marginBottom: 20, overflow: 'hidden',
       shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 5, elevation: 3 },
@@ -321,14 +328,12 @@ function createStyles(theme: ThemeConfig) {
     cardInner: { flex: 1, padding: 20 },
     cardHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
     iconBadge: { width: 36, height: 36, borderRadius: SHAPE.full, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-    // Section titles: big, bold, theme font — this is where the custom font should actually read as distinct
     cardTitle: { fontSize: 19, fontWeight: '800', color: theme.text, fontFamily: theme.fontFamily },
     cardCaption: { fontSize: 12, color: theme.textSecondary, marginTop: 1 },
 
     timeControlsContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 22, gap: 4 },
     timeSection: { alignItems: 'center', gap: 2 },
     adjustButton: { width: 34, height: 26, borderRadius: SHAPE.md, backgroundColor: theme.background, alignItems: 'center', justifyContent: 'center' },
-    // Time digits: also large + bold, second showcase of theme font
     timeInput: {
       fontSize: 44, fontWeight: '800', color: theme.text, width: 70, textAlign: 'center',
       fontFamily: theme.fontFamily, paddingVertical: 2,
@@ -341,7 +346,6 @@ function createStyles(theme: ThemeConfig) {
     segmentFirst: { borderLeftWidth: 0 },
     segmentSelected: { backgroundColor: theme.accent },
     segmentDisabled: { opacity: 0.4 },
-    // Body-level text: plain system font on purpose (contrast against the theme-font headlines above)
     segmentText: { color: theme.textSecondary, fontWeight: '700', fontSize: 13 },
     segmentTextSelected: { color: theme.accentText },
 

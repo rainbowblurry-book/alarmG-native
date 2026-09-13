@@ -128,7 +128,7 @@ export default function SetupScreen() {
                 <Ionicons name="qr-code" size={18} color={theme.accent} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.cardTitle}>1 · Barcode scan</Text>
+                <Text style={styles.cardTitle}>Barcode scan</Text>
                 <Text style={styles.cardCaption}>Scan a real household item to disarm</Text>
               </View>
               {isBarcodeConfigured && (
@@ -177,14 +177,14 @@ export default function SetupScreen() {
 
         {/* --- Section 2: Snooze PIN + Cruelty Mode --- */}
         <View style={styles.card}>
-          <View style={[styles.leftBar, { backgroundColor: theme.accentSecondary || SEMANTIC_COLORS.warning }]} />
+          <View style={[styles.leftBar, { backgroundColor: theme.accent }]} />
           <View style={styles.cardInner}>
             <View style={styles.cardHeaderRow}>
-              <View style={[styles.iconBadge, { backgroundColor: `${(theme.accentSecondary || SEMANTIC_COLORS.warning)}26` }]}>
-                <Ionicons name="keypad" size={18} color={theme.accentSecondary || SEMANTIC_COLORS.warning} />
+              <View style={[styles.iconBadge, { backgroundColor: `${theme.accent}26` }]}>
+                <Ionicons name="keypad" size={18} color={theme.accent} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.cardTitle}>2 · Snooze PIN</Text>
+                <Text style={styles.cardTitle}>Snooze PIN</Text>
                 <Text style={styles.cardCaption}>10 digits, required to snooze instead of scanning</Text>
               </View>
             </View>
@@ -215,7 +215,7 @@ export default function SetupScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.actionButton,
-                { backgroundColor: theme.accentSecondary || SEMANTIC_COLORS.warning },
+                { backgroundColor: theme.accent },
                 pinDraft.length !== 10 && styles.actionButtonDisabled,
                 pressed && styles.pressed,
               ]}
@@ -249,14 +249,14 @@ export default function SetupScreen() {
 
         {/* --- Section 3: Movement mission --- */}
         <View style={styles.card}>
-          <View style={[styles.leftBar, { backgroundColor: SEMANTIC_COLORS.success }]} />
+          <View style={[styles.leftBar, { backgroundColor: theme.accent }]} />
           <View style={styles.cardInner}>
             <View style={styles.cardHeaderRow}>
-              <View style={[styles.iconBadge, { backgroundColor: `${SEMANTIC_COLORS.success}26` }]}>
-                <Ionicons name="walk" size={18} color={SEMANTIC_COLORS.success} />
+              <View style={[styles.iconBadge, { backgroundColor: `${theme.accent}26` }]}>
+                <Ionicons name="walk" size={18} color={theme.accent} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.cardTitle}>3 · Movement</Text>
+                <Text style={styles.cardTitle}>Movement</Text>
                 <Text style={styles.cardCaption}>Walk away from bed before you can scan</Text>
               </View>
               <Pressable
@@ -275,7 +275,7 @@ export default function SetupScreen() {
                   onPress={() => adjustMovement(-5)}
                   accessibilityLabel="Decrease movement target"
                 >
-                  <Ionicons name="remove" size={20} color={SEMANTIC_COLORS.success} />
+                  <Ionicons name="remove" size={20} color={theme.accent} />
                 </Pressable>
                 <View style={styles.targetValueBox}>
                   <Text style={styles.targetValue}>{settings.movementTarget}</Text>
@@ -286,7 +286,7 @@ export default function SetupScreen() {
                   onPress={() => adjustMovement(5)}
                   accessibilityLabel="Increase movement target"
                 >
-                  <Ionicons name="add" size={20} color={SEMANTIC_COLORS.success} />
+                  <Ionicons name="add" size={20} color={theme.accent} />
                 </Pressable>
               </View>
             )}
@@ -366,8 +366,14 @@ function createStyles(theme: ThemeConfig) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.background },
     hero: { paddingHorizontal: 24, paddingBottom: 24, borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
-    heroLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 2, color: `${theme.accentText}CC`, marginBottom: 6 },
-    heroTitle: { fontSize: 22, fontWeight: '800', color: theme.accentText, fontFamily: theme.fontFamily, lineHeight: 28 },
+    heroLabel: {
+      fontSize: 12, fontWeight: '800', letterSpacing: 2, color: `${theme.text}CC`, marginBottom: 6,
+      textShadowColor: 'rgba(0,0,0,0.35)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
+    },
+    heroTitle: {
+      fontSize: 22, fontWeight: '800', color: theme.text, fontFamily: theme.fontFamily, lineHeight: 28,
+      textShadowColor: 'rgba(0,0,0,0.35)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
+    },
 
     scrollContent: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40 },
 
@@ -406,12 +412,12 @@ function createStyles(theme: ThemeConfig) {
     crueltyThumbOn: { backgroundColor: '#fff', alignSelf: 'flex-end' },
 
     miniSwitch: { width: 42, height: 26, borderRadius: SHAPE.full, backgroundColor: theme.background, borderWidth: 1, borderColor: theme.border, padding: 2, justifyContent: 'center' },
-    miniSwitchOn: { backgroundColor: SEMANTIC_COLORS.success, borderColor: SEMANTIC_COLORS.success },
+    miniSwitchOn: { backgroundColor: theme.accent, borderColor: theme.accent },
     miniThumb: { width: 20, height: 20, borderRadius: SHAPE.full, backgroundColor: theme.textSecondary },
     miniThumbOn: { backgroundColor: '#fff', alignSelf: 'flex-end' },
 
     targetRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20, marginTop: 8 },
-    adjustBtn: { width: 40, height: 40, borderRadius: SHAPE.full, backgroundColor: `${SEMANTIC_COLORS.success}1A`, alignItems: 'center', justifyContent: 'center' },
+    adjustBtn: { width: 40, height: 40, borderRadius: SHAPE.full, backgroundColor: `${theme.accent}1A`, alignItems: 'center', justifyContent: 'center' },
     targetValueBox: { alignItems: 'center', minWidth: 60 },
     targetValue: { fontSize: 30, fontWeight: '800', color: theme.text, fontFamily: theme.fontFamily },
     targetUnit: { fontSize: 11, color: theme.textSecondary, fontWeight: '600' },
