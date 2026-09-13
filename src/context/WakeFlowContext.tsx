@@ -1,17 +1,25 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { useSettings } from './SettingsContext';
 
 export type WakeFlowStatus = 'idle' | 'ringing' | 'snoozed';
+
+const BASE_SNOOZE_SECONDS = 300; // 5 minutes
+const MIN_SNOOZE_SECONDS = 20; // cruelty mode floor, mirrors the original web app's spec
 
 export type WakeFlowState = {
   status: WakeFlowStatus;
   movementProgress: number;
   snoozeSecondsRemaining: number;
+  snoozeCount: number;
+  currentSnoozeDurationSeconds: number;
 };
 
 const DEFAULT_WAKE_FLOW: WakeFlowState = {
   status: 'idle',
   movementProgress: 0,
   snoozeSecondsRemaining: 0,
+  snoozeCount: 0,
+  currentSnoozeDurationSeconds: BASE_SNOOZE_SECONDS,
 };
 
 type WakeFlowContextType = {
@@ -27,6 +35,7 @@ type WakeFlowContextType = {
 const WakeFlowContext = createContext<WakeFlowContextType | undefined>(undefined);
 
 export function WakeFlowProvider({ children }: { children: ReactNode }) {
+  const { settings } = useSettings();
   const [wakeFlow, setWakeFlow] = useState<WakeFlowState>(DEFAULT_WAKE_FLOW);
 
   const startPreview = () => {
@@ -34,6 +43,8 @@ export function WakeFlowProvider({ children }: { children: ReactNode }) {
       status: 'ringing',
       movementProgress: 0,
       snoozeSecondsRemaining: 0,
+      snoozeCount: 0,
+      currentSnoozeDurationSeconds: BASE_SNOOZE_SECONDS,
     });
   };
 
@@ -42,6 +53,8 @@ export function WakeFlowProvider({ children }: { children: ReactNode }) {
       status: 'idle',
       movementProgress: 0,
       snoozeSecondsRemaining: 0,
+      snoozeCount: 0,
+      currentSnoozeDurationSeconds: BASE_SNOOZE_SECONDS,
     });
   };
 
@@ -52,12 +65,26 @@ export function WakeFlowProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  // Cruelty mode: every successive snooze in the same ring cycle halves the
+  // previous duration (floor of MIN_SNOOZE_SECONDS), mirroring the original
+  // web prototype's "crueltyMode" behavior. Off (default): always BASE_SNOOZE_SECONDS.
   const startSnooze = () => {
-    setWakeFlow((prev) => ({
-      ...prev,
-      status: 'snoozed',
-      snoozeSecondsRemaining: 300,
-    }));
+    setWakeFlow((prev) => {
+      const nextCount = prev.snoozeCount + 1;
+      let duration = BASE_SNOOZE_SECONDS;
+
+      if (settings.crueltyModeEnabled && prev.snoozeCount > 0) {
+        duration = Math.max(MIN_SNOOZE_SECONDS, Math.floor(prev.currentSnoozeDurationSeconds / 2));
+      }
+
+      return {
+        ...prev,
+        status: 'snoozed',
+        snoozeCount: nextCount,
+        currentSnoozeDurationSeconds: duration,
+        snoozeSecondsRemaining: duration,
+      };
+    });
   };
 
   const decrementSnooze = () => {
@@ -76,11 +103,12 @@ export function WakeFlowProvider({ children }: { children: ReactNode }) {
   };
 
   const returnToRingingFromSnooze = () => {
-    setWakeFlow({
+    setWakeFlow((prev) => ({
+      ...prev,
       status: 'ringing',
       movementProgress: 0,
       snoozeSecondsRemaining: 0,
-    });
+    }));
   };
 
   return (

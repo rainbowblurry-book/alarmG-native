@@ -5,11 +5,14 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Accelerometer } from 'expo-sensors';
 import { useAudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSettings } from '../context/SettingsContext';
 import { useWakeFlow } from '../context/WakeFlowContext';
 import { useTheme } from '../context/ThemeContext';
 import { ThemeConfig, SEMANTIC_COLORS } from '../theme/themes';
+
+const SHAPE = { md: 12, lg: 16, xl: 28, full: 999 };
 
 export default function RingingScreen() {
   const insets = useSafeAreaInsets();
@@ -210,6 +213,11 @@ export default function RingingScreen() {
   const seconds = wakeFlow.snoozeSecondsRemaining % 60;
   const snoozeTimeFormatted = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
+  // Preview of what the *next* snooze duration will be, if cruelty mode is on.
+  const nextSnoozeSeconds = settings.crueltyModeEnabled && wakeFlow.snoozeCount > 0
+    ? Math.max(20, Math.floor(wakeFlow.currentSnoozeDurationSeconds / 2))
+    : wakeFlow.currentSnoozeDurationSeconds;
+
   return (
     <LinearGradient colors={theme.ringingGradient} style={styles.gradientContainer}>
       <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
@@ -217,7 +225,8 @@ export default function RingingScreen() {
           <>
             <View style={styles.topSection}>
               <View style={styles.statusPill}>
-                <Text style={styles.statusPillText}>Alarm Active</Text>
+                <View style={styles.statusDot} />
+                <Text style={styles.statusPillText}>Alarm active</Text>
               </View>
               <Text style={styles.clockText}>{timeFormatted}</Text>
               <Text style={styles.subText}>
@@ -229,12 +238,17 @@ export default function RingingScreen() {
             <View style={styles.middleSection}>
               {settings.movementEnabled && (
                 <View style={styles.card}>
-                  <Text style={styles.cardTitle}>Physical Movement</Text>
+                  <View style={styles.cardHeaderRow}>
+                    <View style={[styles.iconBadge, { backgroundColor: `${theme.accent}30` }]}>
+                      <Ionicons name="walk" size={16} color={theme.accent} />
+                    </View>
+                    <Text style={styles.cardTitle}>Physical movement</Text>
+                  </View>
 
                   {sensorAvailable ? (
                     <>
                       <Text style={styles.cardSubtitle}>
-                        {wakeFlow.movementProgress} / {settings.movementTarget}
+                        {wakeFlow.movementProgress} / {settings.movementTarget} steps
                       </Text>
                       <View style={styles.progressTrack}>
                         <View
@@ -264,6 +278,7 @@ export default function RingingScreen() {
 
               {wrongBarcodeMessage && (
                 <View style={styles.errorBanner}>
+                  <Ionicons name="close-circle" size={16} color={SEMANTIC_COLORS.error} />
                   <Text style={styles.errorBannerText}>{wrongBarcodeMessage}</Text>
                 </View>
               )}
@@ -271,23 +286,37 @@ export default function RingingScreen() {
 
             <View style={styles.bottomSection}>
               <Pressable
-                style={[styles.scanButton, !isMovementComplete && styles.scanButtonDisabled]}
+                style={({ pressed }) => [
+                  styles.scanButton,
+                  !isMovementComplete && styles.scanButtonDisabled,
+                  pressed && isMovementComplete && styles.pressed,
+                ]}
                 onPress={handleOpenDisarmScanner}
                 disabled={!isMovementComplete}
                 accessibilityLabel="Scan to Disarm"
               >
+                <Ionicons name="scan" size={18} color={theme.accentText} />
                 <Text style={styles.scanButtonText}>
-                  {isMovementComplete ? 'Scan to Disarm' : 'Complete Movement First'}
+                  {isMovementComplete ? 'Scan to disarm' : 'Complete movement first'}
                 </Text>
               </Pressable>
 
               <Pressable
-                style={styles.snoozeButton}
+                style={({ pressed }) => [styles.snoozeButton, pressed && styles.pressed]}
                 onPress={() => setIsKeypadOpen(true)}
                 accessibilityLabel="Snooze with PIN"
               >
+                <Ionicons name="moon-outline" size={16} color={theme.accent} />
                 <Text style={styles.snoozeButtonText}>Snooze with PIN</Text>
               </Pressable>
+
+              {settings.crueltyModeEnabled && (
+                <View style={styles.crueltyHint}>
+                  <Text style={styles.crueltyHintText}>
+                    😈 Cruelty mode is on — next snooze will be {nextSnoozeSeconds}s
+                  </Text>
+                </View>
+              )}
 
               <Pressable
                 style={styles.exitPreviewButton}
@@ -302,15 +331,24 @@ export default function RingingScreen() {
           <>
             <View style={styles.topSection}>
               <View style={[styles.statusPill, styles.statusPillSnooze]}>
-                <Text style={styles.statusPillText}>Snoozed</Text>
+                <Ionicons name="moon" size={13} color={theme.accent} />
+                <Text style={styles.statusPillText}>Snoozed · #{wakeFlow.snoozeCount}</Text>
               </View>
               <Text style={styles.snoozeCountdownText}>{snoozeTimeFormatted}</Text>
               <Text style={styles.subText}>Alarm will ring again in</Text>
+              {settings.crueltyModeEnabled && (
+                <View style={styles.crueltyHint}>
+                  <Text style={styles.crueltyHintText}>
+                    😈 Next snooze will be shorter: {nextSnoozeSeconds}s
+                  </Text>
+                </View>
+              )}
             </View>
 
             <View style={styles.middleSection}>
               {wrongBarcodeMessage && (
                 <View style={styles.errorBanner}>
+                  <Ionicons name="close-circle" size={16} color={SEMANTIC_COLORS.error} />
                   <Text style={styles.errorBannerText}>{wrongBarcodeMessage}</Text>
                 </View>
               )}
@@ -318,11 +356,12 @@ export default function RingingScreen() {
 
             <View style={styles.bottomSection}>
               <Pressable
-                style={styles.scanButton}
+                style={({ pressed }) => [styles.scanButton, pressed && styles.pressed]}
                 onPress={handleOpenDisarmScanner}
                 accessibilityLabel="Scan to Disarm Now"
               >
-                <Text style={styles.scanButtonText}>Scan to Disarm Now</Text>
+                <Ionicons name="scan" size={18} color={theme.accentText} />
+                <Text style={styles.scanButtonText}>Scan to disarm now</Text>
               </Pressable>
             </View>
           </>
@@ -402,7 +441,7 @@ export default function RingingScreen() {
                 {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
                   <Pressable
                     key={digit}
-                    style={styles.keypadKey}
+                    style={({ pressed }) => [styles.keypadKey, pressed && styles.pressed]}
                     onPress={() => handleKeyPress(digit)}
                     accessibilityLabel={`Digit ${digit}`}
                   >
@@ -449,67 +488,80 @@ export default function RingingScreen() {
 
 function createStyles(theme: ThemeConfig) {
   const cardBg = `${theme.card}E6`;
+  const SHAPE_XL = 28;
   return StyleSheet.create({
     gradientContainer: { flex: 1 },
     container: { flex: 1, paddingHorizontal: 20 },
     topSection: { alignItems: 'center', paddingTop: 24 },
-    statusPill: { backgroundColor: cardBg, paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, marginBottom: 16 },
+    statusPill: {
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      backgroundColor: cardBg, paddingHorizontal: 16, paddingVertical: 7, borderRadius: 999, marginBottom: 16,
+    },
+    statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: SEMANTIC_COLORS.success },
     statusPillSnooze: { borderWidth: 1, borderColor: theme.accent },
-    statusPillText: { color: theme.accent, fontWeight: 'bold', fontSize: 13, fontFamily: theme.fontFamily },
-    clockText: { fontSize: 72, fontWeight: 'bold', color: theme.text, letterSpacing: -2, fontFamily: theme.fontFamily },
-    snoozeCountdownText: { fontSize: 72, fontWeight: 'bold', color: theme.accent, letterSpacing: -2, fontFamily: theme.fontFamily },
-    subText: { fontSize: 15, color: theme.textSecondary, marginTop: 8, textAlign: 'center', fontFamily: theme.fontFamily },
-    subTextBold: { color: theme.accent, fontWeight: 'bold', fontFamily: theme.fontFamily },
+    statusPillText: { color: theme.text, fontWeight: '700', fontSize: 13 },
+    clockText: { fontSize: 72, fontWeight: '800', color: theme.text, letterSpacing: -2, fontFamily: theme.fontFamily },
+    snoozeCountdownText: { fontSize: 72, fontWeight: '800', color: theme.accent, letterSpacing: -2, fontFamily: theme.fontFamily },
+    subText: { fontSize: 15, color: theme.textSecondary, marginTop: 8, textAlign: 'center' },
+    subTextBold: { color: theme.accent, fontWeight: '700' },
+
+    crueltyHint: { marginTop: 12, backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999 },
+    crueltyHintText: { color: SEMANTIC_COLORS.warning, fontWeight: '700', fontSize: 12, textAlign: 'center' },
+
     middleSection: { flex: 1, justifyContent: 'center', gap: 16 },
-    card: { backgroundColor: cardBg, borderRadius: 24, padding: 20 },
-    cardTitle: { color: theme.text, fontSize: 16, fontWeight: 'bold', marginBottom: 8, fontFamily: theme.fontFamily },
-    cardSubtitle: { color: theme.textSecondary, fontSize: 14, marginBottom: 12, fontFamily: theme.fontFamily },
+    card: { backgroundColor: cardBg, borderRadius: SHAPE_XL, padding: 20 },
+    cardHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 10 },
+    iconBadge: { width: 28, height: 28, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+    cardTitle: { color: theme.text, fontSize: 15, fontWeight: '800', fontFamily: theme.fontFamily },
+    cardSubtitle: { color: theme.textSecondary, fontSize: 13, marginBottom: 12 },
     progressTrack: { height: 10, backgroundColor: theme.background, borderRadius: 5, overflow: 'hidden' },
     progressFill: { height: 10, backgroundColor: theme.accent },
     fallbackButton: { backgroundColor: theme.background, borderRadius: 16, paddingVertical: 14, alignItems: 'center' },
-    fallbackButtonText: { color: theme.accent, fontWeight: 'bold', fontFamily: theme.fontFamily },
-    errorBanner: { backgroundColor: '#3a0f14', borderColor: SEMANTIC_COLORS.error, borderWidth: 1, borderRadius: 16, padding: 14 },
-    errorBannerText: { color: SEMANTIC_COLORS.error, fontWeight: 'bold', textAlign: 'center', fontFamily: theme.fontFamily },
+    fallbackButtonText: { color: theme.accent, fontWeight: '700' },
+    errorBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#3a0f14', borderColor: SEMANTIC_COLORS.error, borderWidth: 1, borderRadius: 16, padding: 14 },
+    errorBannerText: { color: SEMANTIC_COLORS.error, fontWeight: '700', flex: 1 },
     bottomSection: { paddingBottom: 12, gap: 10 },
-    scanButton: { backgroundColor: theme.accent, borderRadius: 20, paddingVertical: 18, alignItems: 'center' },
+    scanButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.accent, borderRadius: 999, paddingVertical: 18 },
     scanButtonDisabled: { backgroundColor: '#333333', opacity: 0.7 },
-    scanButtonText: { color: theme.accentText, fontSize: 16, fontWeight: 'bold', fontFamily: theme.fontFamily },
-    snoozeButton: { backgroundColor: cardBg, borderRadius: 16, paddingVertical: 14, alignItems: 'center' },
-    snoozeButtonText: { color: theme.accent, fontWeight: 'bold', fontFamily: theme.fontFamily },
+    scanButtonText: { color: theme.accentText, fontSize: 16, fontWeight: '800' },
+    snoozeButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: cardBg, borderRadius: 999, paddingVertical: 14 },
+    snoozeButtonText: { color: theme.accent, fontWeight: '700' },
     exitPreviewButton: { paddingVertical: 10, alignItems: 'center' },
-    exitPreviewButtonText: { color: theme.textSecondary, fontSize: 12, fontFamily: theme.fontFamily },
+    exitPreviewButtonText: { color: theme.textSecondary, fontSize: 12 },
 
     modalContainer: { flex: 1, backgroundColor: theme.background },
     permissionContainer: { flex: 1, padding: 24, justifyContent: 'center' },
-    permissionTitle: { fontSize: 24, fontWeight: 'bold', color: theme.text, marginBottom: 12, textAlign: 'center', fontFamily: theme.fontFamily },
-    permissionText: { fontSize: 16, color: theme.textSecondary, textAlign: 'center', marginBottom: 32, lineHeight: 24, fontFamily: theme.fontFamily },
+    permissionTitle: { fontSize: 24, fontWeight: '800', color: theme.text, marginBottom: 12, textAlign: 'center', fontFamily: theme.fontFamily },
+    permissionText: { fontSize: 16, color: theme.textSecondary, textAlign: 'center', marginBottom: 32, lineHeight: 24 },
     modalFooter: { marginTop: 'auto' },
     cancelButton: { paddingVertical: 16, alignItems: 'center' },
-    cancelButtonText: { color: theme.textSecondary, fontSize: 16, fontWeight: 'bold', fontFamily: theme.fontFamily },
+    cancelButtonText: { color: theme.textSecondary, fontSize: 16, fontWeight: '700' },
 
     cameraWrapper: { flex: 1, backgroundColor: '#000' },
     cameraOverlay: { flex: 1, justifyContent: 'space-between', backgroundColor: 'rgba(0,0,0,0.3)' },
     cameraHeaderBox: { padding: 24, paddingTop: 60, alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' },
-    cameraHeaderText: { color: '#ffffff', fontSize: 20, fontWeight: 'bold', marginBottom: 8, fontFamily: theme.fontFamily },
-    cameraSubHeaderText: { color: theme.textSecondary, fontSize: 14, fontFamily: theme.fontFamily },
+    cameraHeaderText: { color: '#ffffff', fontSize: 20, fontWeight: '800', marginBottom: 8 },
+    cameraSubHeaderText: { color: theme.textSecondary, fontSize: 14 },
     cameraFooter: { padding: 32, paddingBottom: 48, alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' },
 
     keypadOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', padding: 24 },
-    keypadContainer: { backgroundColor: theme.card, borderRadius: 24, padding: 24 },
-    keypadTitle: { color: theme.accent, fontWeight: 'bold', fontSize: 14, textAlign: 'center', marginBottom: 12, textTransform: 'uppercase', fontFamily: theme.fontFamily },
+    keypadContainer: { backgroundColor: theme.card, borderRadius: SHAPE_XL, padding: 24 },
+    keypadTitle: { color: theme.accent, fontWeight: '800', fontSize: 14, textAlign: 'center', marginBottom: 12, textTransform: 'uppercase' },
     pinDisplay: { backgroundColor: '#000', borderRadius: 14, paddingVertical: 12, marginBottom: 8 },
     pinDisplayError: { borderColor: SEMANTIC_COLORS.error, borderWidth: 1 },
-    pinDisplayText: { color: theme.accent, textAlign: 'center', fontSize: 18, fontWeight: 'bold', letterSpacing: 4, fontFamily: theme.fontFamily },
-    pinErrorText: { color: SEMANTIC_COLORS.error, textAlign: 'center', marginBottom: 8, fontSize: 12, fontWeight: 'bold', fontFamily: theme.fontFamily },
+    pinDisplayText: { color: theme.accent, textAlign: 'center', fontSize: 18, fontWeight: '800', letterSpacing: 4 },
+    pinErrorText: { color: SEMANTIC_COLORS.error, textAlign: 'center', marginBottom: 8, fontSize: 12, fontWeight: '700' },
     keypadGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
     keypadKey: { width: '30%', height: 52, borderRadius: 14, backgroundColor: '#222', alignItems: 'center', justifyContent: 'center' },
-    keypadKeyText: { color: theme.text, fontSize: 18, fontWeight: 'bold', fontFamily: theme.fontFamily },
+    keypadKeyText: { color: theme.text, fontSize: 18, fontWeight: '800' },
     keypadKeyClear: { width: '30%', height: 52, borderRadius: 14, backgroundColor: '#1a1a1a', alignItems: 'center', justifyContent: 'center' },
-    keypadKeyClearText: { color: theme.textSecondary, fontSize: 11, fontWeight: 'bold', fontFamily: theme.fontFamily },
+    keypadKeyClearText: { color: theme.textSecondary, fontSize: 11, fontWeight: '700' },
     keypadKeyConfirm: { width: '30%', height: 52, borderRadius: 14, backgroundColor: theme.accent, alignItems: 'center', justifyContent: 'center' },
     keypadKeyConfirmDisabled: { opacity: 0.3 },
-    keypadKeyConfirmText: { color: theme.accentText, fontSize: 14, fontWeight: 'bold', fontFamily: theme.fontFamily },
+    keypadKeyConfirmText: { color: theme.accentText, fontSize: 14, fontWeight: '800' },
     keypadCancel: { marginTop: 16, alignItems: 'center' },
-    keypadCancelText: { color: theme.textSecondary, fontSize: 14, fontWeight: 'bold', fontFamily: theme.fontFamily },
+    keypadCancelText: { color: theme.textSecondary, fontSize: 14, fontWeight: '700' },
+
+    pressed: { opacity: 0.8 },
   });
 }

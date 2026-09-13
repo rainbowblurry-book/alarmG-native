@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors } from '../theme/colors';
+import { DEFAULT_THEME_ID, THEMES } from '../theme/themes';
 
 export type AlarmSettings = {
   alarmHour: number;
@@ -13,6 +13,7 @@ export type AlarmSettings = {
   snoozePin: string;
   movementEnabled: boolean;
   movementTarget: number;
+  crueltyModeEnabled: boolean;
 };
 
 const DEFAULT_SETTINGS: AlarmSettings = {
@@ -25,6 +26,7 @@ const DEFAULT_SETTINGS: AlarmSettings = {
   snoozePin: '8492017356',
   movementEnabled: true,
   movementTarget: 15,
+  crueltyModeEnabled: false,
 };
 
 function isValidSettings(data: any): data is Partial<AlarmSettings> {
@@ -52,6 +54,7 @@ function isValidSettings(data: any): data is Partial<AlarmSettings> {
   if ('movementTarget' in data) {
     if (typeof data.movementTarget !== 'number' || !Number.isFinite(data.movementTarget) || !Number.isInteger(data.movementTarget) || data.movementTarget <= 0) return false;
   }
+  if ('crueltyModeEnabled' in data && typeof data.crueltyModeEnabled !== 'boolean') return false;
 
   return true;
 }
@@ -120,9 +123,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   };
 
   if (isLoading) {
+    const loadingTheme = THEMES[DEFAULT_THEME_ID];
     return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading settings...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: loadingTheme.background }]}>
+        <Text style={[styles.loadingText, { color: loadingTheme.textSecondary }]}>Loading settings...</Text>
       </View>
     );
   }
@@ -145,12 +149,10 @@ export function useSettings() {
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
-    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
   loadingText: {
-    color: colors.textSecondary,
     fontSize: 16,
   },
 });

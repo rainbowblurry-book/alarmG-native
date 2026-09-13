@@ -2,9 +2,12 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Switch } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSettings } from '../context/SettingsContext';
 import { useTheme } from '../context/ThemeContext';
-import { ThemeConfig } from '../theme/themes';
+import { ThemeConfig, SEMANTIC_COLORS } from '../theme/themes';
+
+const SHAPE = { md: 12, lg: 16, xl: 28, full: 999 };
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
@@ -21,88 +24,132 @@ export default function SettingsScreen() {
   const styles = createStyles(theme);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.header}>Settings</Text>
+    <View style={styles.container}>
+      <LinearGradient colors={theme.ringingGradient} style={[styles.hero, { paddingTop: insets.top + 20 }]}>
+        <Text style={styles.heroLabel}>PERSONALIZE</Text>
+        <Text style={styles.heroTitle}>Settings</Text>
+      </LinearGradient>
 
-        <Text style={styles.sectionLabel}>Appearance</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* --- Appearance / theme picker --- */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Theme</Text>
-          <Text style={styles.cardDescription}>
-            Choose the look of your alarm, setup, and ringing screens.
-          </Text>
-          <View style={styles.themeGrid}>
-            {themeList.map((t) => {
-              const isSelected = t.id === themeId;
-              return (
-                <Pressable
-                  key={t.id}
-                  onPress={() => setThemeId(t.id)}
-                  style={styles.themeItem}
-                  accessibilityLabel={`Select ${t.name} theme`}
-                  accessibilityState={{ selected: isSelected }}
-                >
-                  <View
-                    style={[
-                      styles.themeSwatch,
-                      {
-                        backgroundColor: t.accent,
-                        borderColor: isSelected ? t.accent : 'transparent',
-                      },
-                    ]}
-                  >
-                    {isSelected && <Ionicons name="checkmark" size={20} color={t.accentText} />}
-                  </View>
-                  <Text style={[styles.themeName, isSelected && { color: theme.text, fontWeight: '700' }]}>
-                    {t.name}
-                  </Text>
-                  <Text style={styles.themeTagline}>{t.tagline}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        <Text style={styles.sectionLabel}>Sound</Text>
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Alarm Sound</Text>
-          <Text style={styles.cardDescription}>
-            Custom tones and sound profiles are coming in the next update.
-          </Text>
-          <View style={styles.settingRow}>
-            <Text style={styles.settingLabel}>Current tone</Text>
-            <Text style={styles.settingValue}>Default</Text>
-          </View>
-        </View>
-
-        <Text style={[styles.sectionLabel, styles.devSectionLabel]}>
-          Developer testing (remove before release)
-        </Text>
-        <View style={[styles.card, styles.devCard]}>
-          <View style={styles.settingRow}>
-            <View style={{ flex: 1, paddingRight: 12 }}>
-              <Text style={styles.cardTitle}>Simulate Pro</Text>
-              <Text style={styles.cardDescription}>
-                Preview the full Pro experience locally. Not persisted, not real billing.
-              </Text>
+          <View style={[styles.leftBar, { backgroundColor: theme.accent }]} />
+          <View style={styles.cardInner}>
+            <View style={styles.cardHeaderRow}>
+              <View style={[styles.iconBadge, { backgroundColor: `${theme.accent}26` }]}>
+                <Ionicons name="color-palette" size={18} color={theme.accent} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cardTitle}>Theme</Text>
+                <Text style={styles.cardCaption}>Pick the look of every screen</Text>
+              </View>
             </View>
-            <Switch
-              value={devSimulatePro}
-              onValueChange={setDevSimulatePro}
-              trackColor={{ false: theme.border, true: theme.accent }}
-              thumbColor="#ffffff"
-            />
+
+            <View style={styles.themeGrid}>
+              {themeList.map((t) => {
+                const isSelected = t.id === themeId;
+                return (
+                  <Pressable
+                    key={t.id}
+                    onPress={() => setThemeId(t.id)}
+                    style={styles.themeItem}
+                    accessibilityLabel={`Select ${t.name} theme`}
+                    accessibilityState={{ selected: isSelected }}
+                  >
+                    <View
+                      style={[
+                        styles.themeSwatch,
+                        {
+                          backgroundColor: t.accent,
+                          borderColor: isSelected ? t.accent : 'transparent',
+                          shadowColor: t.accent,
+                          shadowOpacity: isSelected ? 0.6 : 0,
+                        },
+                      ]}
+                    >
+                      {isSelected && <Ionicons name="checkmark" size={22} color={t.accentText} />}
+                    </View>
+                    <Text style={[styles.themeName, isSelected && { color: theme.text, fontWeight: '800' }]}>
+                      {t.name}
+                    </Text>
+                    <Text style={styles.themeTagline}>{t.tagline}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
         </View>
 
-        <Text style={styles.sectionLabel}>Danger zone</Text>
-        <Pressable
-          style={styles.resetButton}
-          onPress={() => setModalVisible(true)}
-          accessibilityLabel="Reset Alarm Settings"
-        >
-          <Text style={styles.resetButtonText}>Reset Alarm Settings</Text>
-        </Pressable>
+        {/* --- Sound --- */}
+        <View style={styles.card}>
+          <View style={[styles.leftBar, { backgroundColor: theme.accentSecondary || theme.accent }]} />
+          <View style={styles.cardInner}>
+            <View style={styles.cardHeaderRow}>
+              <View style={[styles.iconBadge, { backgroundColor: `${(theme.accentSecondary || theme.accent)}26` }]}>
+                <Ionicons name="volume-high" size={18} color={theme.accentSecondary || theme.accent} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cardTitle}>Alarm sound</Text>
+                <Text style={styles.cardCaption}>Custom tones coming in the next update</Text>
+              </View>
+            </View>
+
+            <View style={styles.settingRow}>
+              <Text style={styles.settingLabel}>Current tone</Text>
+              <View style={styles.settingValuePill}>
+                <Text style={styles.settingValueText}>Default</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* --- Developer testing --- */}
+        <View style={[styles.card, styles.devCard]}>
+          <View style={[styles.leftBar, { backgroundColor: SEMANTIC_COLORS.warning }]} />
+          <View style={styles.cardInner}>
+            <View style={styles.cardHeaderRow}>
+              <View style={[styles.iconBadge, { backgroundColor: `${SEMANTIC_COLORS.warning}26` }]}>
+                <Ionicons name="construct" size={18} color={SEMANTIC_COLORS.warning} />
+              </View>
+              <Text style={styles.cardTitle}>Developer testing</Text>
+            </View>
+            <Text style={[styles.cardCaption, { marginBottom: 12 }]}>Remove before release</Text>
+
+            <View style={styles.settingRow}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text style={styles.devLabel}>Simulate Pro</Text>
+                <Text style={styles.cardCaption}>Preview locally. Not persisted, not real billing.</Text>
+              </View>
+              <Switch
+                value={devSimulatePro}
+                onValueChange={setDevSimulatePro}
+                trackColor={{ false: theme.border, true: theme.accent }}
+                thumbColor="#ffffff"
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* --- Danger zone --- */}
+        <View style={styles.card}>
+          <View style={[styles.leftBar, { backgroundColor: SEMANTIC_COLORS.error }]} />
+          <View style={styles.cardInner}>
+            <View style={styles.cardHeaderRow}>
+              <View style={[styles.iconBadge, { backgroundColor: `${SEMANTIC_COLORS.error}26` }]}>
+                <Ionicons name="warning" size={18} color={SEMANTIC_COLORS.error} />
+              </View>
+              <Text style={styles.cardTitle}>Danger zone</Text>
+            </View>
+            <Pressable
+              style={({ pressed }) => [styles.resetButton, pressed && styles.pressed]}
+              onPress={() => setModalVisible(true)}
+              accessibilityLabel="Reset Alarm Settings"
+            >
+              <Ionicons name="refresh" size={16} color={SEMANTIC_COLORS.error} />
+              <Text style={styles.resetButtonText}>Reset all settings</Text>
+            </Pressable>
+          </View>
+        </View>
       </ScrollView>
 
       <Modal
@@ -113,7 +160,7 @@ export default function SettingsScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Reset Settings?</Text>
+            <Text style={styles.modalTitle}>Reset settings?</Text>
             <Text style={styles.modalBody}>
               This will return all settings to their defaults (07:00, Weekdays, Bathroom Toothpaste).
             </Text>
@@ -144,90 +191,56 @@ export default function SettingsScreen() {
 
 function createStyles(theme: ThemeConfig) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: theme.background, paddingHorizontal: 16 },
-    scrollContent: { paddingBottom: 40 },
-    header: { fontSize: 32, fontWeight: 'bold', color: theme.text, marginVertical: 24, fontFamily: theme.fontFamily },
-    sectionLabel: {
-      fontSize: 12,
-      fontWeight: '700',
-      letterSpacing: 1,
-      color: theme.textSecondary,
-      marginBottom: 10,
-      marginTop: 4,
-      textTransform: 'uppercase',
-      fontFamily: theme.fontFamily,
-    },
-    devSectionLabel: {
-      color: theme.accentSecondary || theme.accent,
-    },
-    card: {
-      backgroundColor: theme.card,
-      borderRadius: 24,
-      padding: 24,
-      marginBottom: 28,
-    },
-    devCard: {
-      borderWidth: 1,
-      borderStyle: 'dashed',
-      borderColor: theme.accentSecondary || theme.accent,
-    },
-    cardTitle: { fontSize: 20, fontWeight: 'bold', color: theme.text, marginBottom: 8, fontFamily: theme.fontFamily },
-    cardDescription: { fontSize: 14, color: theme.textSecondary, marginBottom: 20, lineHeight: 20, fontFamily: theme.fontFamily },
-    themeGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 16,
-    },
-    themeItem: {
-      width: '28%',
-      alignItems: 'center',
-    },
+    container: { flex: 1, backgroundColor: theme.background },
+    hero: { paddingHorizontal: 24, paddingBottom: 24, borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
+    heroLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 2, color: `${theme.accentText}CC`, marginBottom: 6 },
+    heroTitle: { fontSize: 30, fontWeight: '800', color: theme.accentText, fontFamily: theme.fontFamily },
+
+    scrollContent: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40 },
+
+    card: { flexDirection: 'row', backgroundColor: theme.card, borderRadius: SHAPE.xl, marginBottom: 16, overflow: 'hidden',
+      shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 5, elevation: 3 },
+    devCard: { borderStyle: 'dashed' },
+    leftBar: { width: 5 },
+    cardInner: { flex: 1, padding: 18 },
+    cardHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+    iconBadge: { width: 34, height: 34, borderRadius: SHAPE.full, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+    cardTitle: { fontSize: 17, fontWeight: '800', color: theme.text, fontFamily: theme.fontFamily },
+    cardCaption: { fontSize: 12, color: theme.textSecondary, marginTop: 1 },
+
+    themeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, justifyContent: 'flex-start' },
+    themeItem: { width: '28%', alignItems: 'center' },
     themeSwatch: {
-      width: 52,
-      height: 52,
-      borderRadius: 26,
-      borderWidth: 2,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 8,
+      width: 56, height: 56, borderRadius: SHAPE.full, borderWidth: 2.5, alignItems: 'center', justifyContent: 'center',
+      marginBottom: 8, shadowOffset: { width: 0, height: 0 }, shadowRadius: 8, elevation: 3,
     },
-    themeName: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: theme.textSecondary,
-      textAlign: 'center',
-      fontFamily: theme.fontFamily,
-    },
-    themeTagline: {
-      fontSize: 11,
-      color: theme.textSecondary,
-      textAlign: 'center',
-      opacity: 0.7,
-      marginTop: 2,
-      fontFamily: theme.fontFamily,
-    },
-    settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8 },
-    settingLabel: { color: theme.textSecondary, fontSize: 16, fontFamily: theme.fontFamily },
-    settingValue: { color: theme.accent, fontSize: 16, fontWeight: 'bold', fontFamily: theme.fontFamily },
+    themeName: { fontSize: 13, fontWeight: '700', color: theme.textSecondary, textAlign: 'center' },
+    themeTagline: { fontSize: 10, color: theme.textSecondary, textAlign: 'center', opacity: 0.7, marginTop: 1 },
+
+    settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    settingLabel: { color: theme.textSecondary, fontSize: 14, fontWeight: '600' },
+    settingValuePill: { backgroundColor: theme.background, paddingHorizontal: 12, paddingVertical: 5, borderRadius: SHAPE.full },
+    settingValueText: { color: theme.accent, fontSize: 13, fontWeight: '700' },
+
+    devLabel: { fontSize: 14, fontWeight: '700', color: theme.text, marginBottom: 2 },
+
     resetButton: {
-      marginTop: 4,
-      marginBottom: 16,
-      backgroundColor: theme.card,
-      paddingVertical: 18,
-      borderRadius: 24,
-      alignItems: 'center',
-      borderWidth: 1,
-      borderColor: '#ff4444',
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+      backgroundColor: `${SEMANTIC_COLORS.error}1A`, paddingVertical: 14, borderRadius: SHAPE.full,
+      borderWidth: 1, borderColor: SEMANTIC_COLORS.error,
     },
-    resetButtonText: { color: '#ff4444', fontSize: 16, fontWeight: 'bold', fontFamily: theme.fontFamily },
+    resetButtonText: { color: SEMANTIC_COLORS.error, fontSize: 14, fontWeight: '800' },
+
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.7)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-    modalContent: { backgroundColor: theme.card, borderRadius: 24, padding: 24, width: '100%' },
-    modalTitle: { fontSize: 22, fontWeight: 'bold', color: theme.text, marginBottom: 12, fontFamily: theme.fontFamily },
-    modalBody: { fontSize: 16, color: theme.textSecondary, lineHeight: 24, marginBottom: 24, fontFamily: theme.fontFamily },
+    modalContent: { backgroundColor: theme.card, borderRadius: SHAPE.xl, padding: 24, width: '100%' },
+    modalTitle: { fontSize: 22, fontWeight: '800', color: theme.text, marginBottom: 12, fontFamily: theme.fontFamily },
+    modalBody: { fontSize: 15, color: theme.textSecondary, lineHeight: 22, marginBottom: 24 },
     modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
-    modalButton: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 12, backgroundColor: theme.background },
-    modalButtonDanger: { backgroundColor: '#ff4444' },
-    modalButtonText: { color: theme.text, fontSize: 16, fontWeight: 'bold', fontFamily: theme.fontFamily },
-    modalButtonTextDanger: { color: '#ffffff', fontSize: 16, fontWeight: 'bold', fontFamily: theme.fontFamily },
+    modalButton: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: SHAPE.md, backgroundColor: theme.background },
+    modalButtonDanger: { backgroundColor: SEMANTIC_COLORS.error },
+    modalButtonText: { color: theme.text, fontSize: 15, fontWeight: '700' },
+    modalButtonTextDanger: { color: '#ffffff', fontSize: 15, fontWeight: '700' },
+
+    pressed: { opacity: 0.75 },
   });
 }
