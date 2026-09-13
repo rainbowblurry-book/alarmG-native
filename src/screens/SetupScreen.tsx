@@ -111,6 +111,9 @@ export default function SetupScreen() {
     setTimeout(() => setPinSaved(false), 3000);
   };
 
+  const pinButtonDisabled = pinDraft.length !== 10;
+  const manualBarcodeDisabled = !manualBarcode.trim();
+
   return (
     <View style={styles.container}>
       <LinearGradient colors={theme.ringingGradient} style={[styles.hero, { paddingTop: insets.top + 20 }]}>
@@ -119,7 +122,6 @@ export default function SetupScreen() {
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* --- Section 1: Barcode / QR scanner mission (includes item name) --- */}
         <View style={styles.card}>
           <View style={[styles.leftBar, { backgroundColor: theme.accent }]} />
           <View style={styles.cardInner}>
@@ -150,7 +152,7 @@ export default function SetupScreen() {
             />
 
             {isBarcodeConfigured ? (
-              <Text style={styles.statusDetail}>Saved barcode ending in •••{lastFour}</Text>
+              <Text style={styles.statusDetail}>Saved barcode ending in ...{lastFour}</Text>
             ) : (
               <Text style={styles.statusMissing}>No barcode registered yet</Text>
             )}
@@ -163,10 +165,11 @@ export default function SetupScreen() {
             )}
 
             <Pressable
-              style={({ pressed }) => [styles.actionButton, { backgroundColor: theme.accent }, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]}
               onPress={handleOpenScanner}
               accessibilityLabel="Scan Wake-up Item Barcode"
             >
+              <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFillObject} />
               <Ionicons name="scan-outline" size={16} color={theme.accentText} />
               <Text style={[styles.actionButtonText, { color: theme.accentText }]}>
                 {isBarcodeConfigured ? 'Re-scan barcode' : 'Scan barcode'}
@@ -175,7 +178,6 @@ export default function SetupScreen() {
           </View>
         </View>
 
-        {/* --- Section 2: Snooze PIN + Cruelty Mode --- */}
         <View style={styles.card}>
           <View style={[styles.leftBar, { backgroundColor: theme.accent }]} />
           <View style={styles.cardInner}>
@@ -215,23 +217,24 @@ export default function SetupScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.actionButton,
-                { backgroundColor: theme.accent },
-                pinDraft.length !== 10 && styles.actionButtonDisabled,
-                pressed && styles.pressed,
+                pinButtonDisabled && styles.actionButtonDisabled,
+                pressed && !pinButtonDisabled && styles.pressed,
               ]}
               onPress={handleSavePin}
-              disabled={pinDraft.length !== 10}
+              disabled={pinButtonDisabled}
               accessibilityLabel="Save snooze PIN"
             >
+              {!pinButtonDisabled && (
+                <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFillObject} />
+              )}
               <Ionicons name="save-outline" size={16} color={theme.accentText} />
               <Text style={[styles.actionButtonText, { color: theme.accentText }]}>Save PIN</Text>
             </Pressable>
 
-            {/* Cruelty mode toggle */}
             <View style={styles.divider} />
             <View style={styles.crueltyRow}>
               <View style={{ flex: 1, paddingRight: 10 }}>
-                <Text style={styles.crueltyTitle}>😈 Cruelty mode</Text>
+                <Text style={styles.crueltyTitle}>Cruelty mode</Text>
                 <Text style={styles.cardCaption}>Halves the snooze time every time you snooze</Text>
               </View>
               <Pressable
@@ -247,7 +250,6 @@ export default function SetupScreen() {
           </View>
         </View>
 
-        {/* --- Section 3: Movement mission --- */}
         <View style={styles.card}>
           <View style={[styles.leftBar, { backgroundColor: theme.accent }]} />
           <View style={styles.cardInner}>
@@ -301,7 +303,8 @@ export default function SetupScreen() {
               <Text style={styles.permissionTitle}>Camera permission required</Text>
               <Text style={styles.permissionText}>Camera access is needed to scan your wake-up item.</Text>
 
-              <Pressable style={[styles.actionButton, { backgroundColor: theme.accent }]} onPress={() => Linking.openSettings()} accessibilityLabel="Open app settings">
+              <Pressable style={styles.actionButton} onPress={() => Linking.openSettings()} accessibilityLabel="Open app settings">
+                <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFillObject} />
                 <Text style={[styles.actionButtonText, { color: theme.accentText }]}>Open Settings</Text>
               </Pressable>
 
@@ -322,11 +325,14 @@ export default function SetupScreen() {
                   accessibilityLabel="Manual barcode input"
                 />
                 <Pressable
-                  style={[styles.actionButton, { backgroundColor: theme.accent }, !manualBarcode.trim() && styles.actionButtonDisabled]}
+                  style={[styles.actionButton, manualBarcodeDisabled && styles.actionButtonDisabled]}
                   onPress={handleManualSubmit}
-                  disabled={!manualBarcode.trim()}
+                  disabled={manualBarcodeDisabled}
                   accessibilityLabel="Save manual barcode"
                 >
+                  {!manualBarcodeDisabled && (
+                    <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFillObject} />
+                  )}
                   <Text style={[styles.actionButtonText, { color: theme.accentText }]}>Save Manual Barcode</Text>
                 </Pressable>
               </View>
@@ -398,8 +404,8 @@ function createStyles(theme: ThemeConfig) {
     successBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: SEMANTIC_COLORS.success, padding: 10, borderRadius: SHAPE.md, marginBottom: 12, justifyContent: 'center' },
     successText: { color: '#052e1a', fontWeight: '700', fontSize: 13 },
 
-    actionButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: SHAPE.full, paddingVertical: 13, marginTop: 4 },
-    actionButtonDisabled: { opacity: 0.4 },
+    actionButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: SHAPE.full, paddingVertical: 13, marginTop: 4, overflow: 'hidden' },
+    actionButtonDisabled: { backgroundColor: '#333333', opacity: 0.5 },
     actionButtonText: { fontSize: 14, fontWeight: '700' },
 
     divider: { height: 1, backgroundColor: theme.border, marginVertical: 16 },

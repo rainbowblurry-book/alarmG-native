@@ -213,7 +213,6 @@ export default function RingingScreen() {
   const seconds = wakeFlow.snoozeSecondsRemaining % 60;
   const snoozeTimeFormatted = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
-  // Preview of what the *next* snooze duration will be, if cruelty mode is on.
   const nextSnoozeSeconds = settings.crueltyModeEnabled && wakeFlow.snoozeCount > 0
     ? Math.max(20, Math.floor(wakeFlow.currentSnoozeDurationSeconds / 2))
     : wakeFlow.currentSnoozeDurationSeconds;
@@ -295,6 +294,9 @@ export default function RingingScreen() {
                 disabled={!isMovementComplete}
                 accessibilityLabel="Scan to Disarm"
               >
+                {isMovementComplete && (
+                  <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFillObject} />
+                )}
                 <Ionicons name="scan" size={18} color={theme.accentText} />
                 <Text style={styles.scanButtonText}>
                   {isMovementComplete ? 'Scan to disarm' : 'Complete movement first'}
@@ -313,7 +315,7 @@ export default function RingingScreen() {
               {settings.crueltyModeEnabled && (
                 <View style={styles.crueltyHint}>
                   <Text style={styles.crueltyHintText}>
-                    😈 Cruelty mode is on — next snooze will be {nextSnoozeSeconds}s
+                    Cruelty mode is on - next snooze will be {nextSnoozeSeconds}s
                   </Text>
                 </View>
               )}
@@ -332,14 +334,14 @@ export default function RingingScreen() {
             <View style={styles.topSection}>
               <View style={[styles.statusPill, styles.statusPillSnooze]}>
                 <Ionicons name="moon" size={13} color={theme.accent} />
-                <Text style={styles.statusPillText}>Snoozed · #{wakeFlow.snoozeCount}</Text>
+                <Text style={styles.statusPillText}>Snoozed - #{wakeFlow.snoozeCount}</Text>
               </View>
               <Text style={styles.snoozeCountdownText}>{snoozeTimeFormatted}</Text>
               <Text style={styles.subText}>Alarm will ring again in</Text>
               {settings.crueltyModeEnabled && (
                 <View style={styles.crueltyHint}>
                   <Text style={styles.crueltyHintText}>
-                    😈 Next snooze will be shorter: {nextSnoozeSeconds}s
+                    Next snooze will be shorter: {nextSnoozeSeconds}s
                   </Text>
                 </View>
               )}
@@ -360,6 +362,7 @@ export default function RingingScreen() {
                 onPress={handleOpenDisarmScanner}
                 accessibilityLabel="Scan to Disarm Now"
               >
+                <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFillObject} />
                 <Ionicons name="scan" size={18} color={theme.accentText} />
                 <Text style={styles.scanButtonText}>Scan to disarm now</Text>
               </Pressable>
@@ -432,7 +435,7 @@ export default function RingingScreen() {
               <Text style={styles.keypadTitle}>Snooze PIN</Text>
 
               <View style={[styles.pinDisplay, pinError && styles.pinDisplayError]}>
-                <Text style={styles.pinDisplayText}>{enteredPin.padEnd(10, '·')}</Text>
+                <Text style={styles.pinDisplayText}>{enteredPin.padEnd(10, '.')}</Text>
               </View>
 
               {pinError && <Text style={styles.pinErrorText}>Incorrect PIN. Please try again.</Text>}
@@ -521,7 +524,7 @@ function createStyles(theme: ThemeConfig) {
     errorBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#3a0f14', borderColor: SEMANTIC_COLORS.error, borderWidth: 1, borderRadius: 16, padding: 14 },
     errorBannerText: { color: SEMANTIC_COLORS.error, fontWeight: '700', flex: 1 },
     bottomSection: { paddingBottom: 12, gap: 10 },
-    scanButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: theme.accent, borderRadius: 999, paddingVertical: 18 },
+    scanButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 999, paddingVertical: 18, overflow: 'hidden' },
     scanButtonDisabled: { backgroundColor: '#333333', opacity: 0.7 },
     scanButtonText: { color: theme.accentText, fontSize: 16, fontWeight: '800' },
     snoozeButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: cardBg, borderRadius: 999, paddingVertical: 14 },

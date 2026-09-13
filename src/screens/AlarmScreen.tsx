@@ -33,7 +33,6 @@ export default function AlarmScreen() {
     return `${hh}:${mm}`;
   };
 
-  // --- Manual time entry (buffered, like a real M3 time-picker text field) ---
   const [isEditingHour, setIsEditingHour] = useState(false);
   const [hourInput, setHourInput] = useState(String(settings.alarmHour).padStart(2, '0'));
   const [isEditingMinute, setIsEditingMinute] = useState(false);
@@ -101,10 +100,10 @@ export default function AlarmScreen() {
 
   const noDaysSelected = settings.repeatDays.length === 0;
   const isArmButtonDisabled = noDaysSelected && !settings.isArmed;
+  const showFabGradient = !isArmButtonDisabled && !settings.isArmed;
 
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-      {/* --- Hero gradient band: theme identity + live clock, full color "wow" moment --- */}
       <LinearGradient colors={theme.ringingGradient} style={[styles.hero, { paddingTop: insets.top + 20 }]}>
         <Text style={styles.heroLabel}>{settings.isArmed ? 'ALARM ARMED' : 'NEXT WAKE-UP'}</Text>
         <Text style={styles.heroClock}>{formatLiveTime(currentTime)}</Text>
@@ -115,7 +114,7 @@ export default function AlarmScreen() {
             color={theme.text}
           />
           <Text style={styles.heroPillText}>
-            {String(settings.alarmHour).padStart(2, '0')}:{String(settings.alarmMinute).padStart(2, '0')} ·{' '}
+            {String(settings.alarmHour).padStart(2, '0')}:{String(settings.alarmMinute).padStart(2, '0')} - {' '}
             {settings.repeatDays.length === 7
               ? 'Every day'
               : settings.repeatDays.length === 0
@@ -126,7 +125,6 @@ export default function AlarmScreen() {
       </LinearGradient>
 
       <View style={styles.body}>
-        {/* --- Schedule card: accent-tinted left bar + icon badge for section identity --- */}
         <View style={styles.card}>
           <View style={[styles.leftBar, { backgroundColor: theme.accent }]} />
           <View style={styles.cardInner}>
@@ -253,7 +251,6 @@ export default function AlarmScreen() {
           </View>
         </View>
 
-        {/* --- Primary action: extended FAB --- */}
         <Pressable
           style={({ pressed }) => [
             styles.fab,
@@ -268,6 +265,9 @@ export default function AlarmScreen() {
             isArmButtonDisabled ? 'Select at least one repeat day before arming the alarm.' : undefined
           }
         >
+          {showFabGradient && (
+            <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFillObject} />
+          )}
           <Ionicons
             name={settings.isArmed ? 'close-circle' : 'shield-checkmark'}
             size={22}
@@ -303,10 +303,6 @@ function createStyles(theme: ThemeConfig) {
     container: { flexGrow: 1, backgroundColor: theme.background },
     body: { paddingHorizontal: 16, paddingTop: 20 },
 
-    // Hero band — full theme-color gradient, the "wow" surface.
-    // Uses theme.text (always light, made for dark backgrounds) instead of
-    // theme.accentText (which is dark for Amber/Neon/Blossom, causing low
-    // contrast against the gradient). Text-shadow adds extra legibility.
     hero: { paddingBottom: 28, paddingHorizontal: 24, alignItems: 'center', borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
     heroLabel: {
       fontSize: 12, fontWeight: '800', letterSpacing: 2, color: `${theme.text}CC`, marginBottom: 6,
@@ -354,7 +350,7 @@ function createStyles(theme: ThemeConfig) {
 
     fab: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-      backgroundColor: theme.accent, borderRadius: SHAPE.full, paddingVertical: 17, marginBottom: 12,
+      borderRadius: SHAPE.full, paddingVertical: 17, marginBottom: 12, overflow: 'hidden',
       shadowColor: theme.accent, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 5,
     },
     fabArmed: { backgroundColor: theme.card, borderWidth: 1.5, borderColor: SEMANTIC_COLORS.error, shadowOpacity: 0, elevation: 0 },

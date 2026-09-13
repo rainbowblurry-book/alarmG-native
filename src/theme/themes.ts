@@ -15,6 +15,8 @@ export interface ThemeConfig {
   accentSecondary?: string;
   accentText: string;
   ringingGradient: string[];
+  buttonGradient: string[];
+  glassEffect?: boolean;
 }
 
 export const SEMANTIC_COLORS = {
@@ -38,6 +40,7 @@ export const THEMES: Record<ThemeId, ThemeConfig> = {
     accent: '#4F8EF7',
     accentText: '#FFFFFF',
     ringingGradient: ['#0B0F17', '#15243F', '#2C4D8F'],
+    buttonGradient: ['#4F8EF7', '#4F8EF7'],
   },
   amber: {
     id: 'amber',
@@ -53,22 +56,25 @@ export const THEMES: Record<ThemeId, ThemeConfig> = {
     accent: '#F2A93B',
     accentText: '#1A1006',
     ringingGradient: ['#160F09', '#3B2107', '#8A4A12'],
+    buttonGradient: ['#F2A93B', '#F2A93B'],
   },
   neon: {
     id: 'neon',
     name: 'Neon',
     tagline: 'Cyber Pulse',
     fontFamily: 'Orbitron_700Bold',
-    background: '#070A16',
-    card: '#10162B',
-    cardAlt: '#0B0F20',
-    border: '#1E2A4A',
-    text: '#E4F7FB',
-    textSecondary: '#7FA9C4',
-    accent: '#22D3EE',
-    accentSecondary: '#A855F7',
-    accentText: '#04121A',
-    ringingGradient: ['#070A16', '#0E2436', '#3A1750'],
+    background: '#1C0B2B',
+    card: '#2A1240',
+    cardAlt: '#170A22',
+    border: '#4A2A6B',
+    text: '#FFFFFF',
+    textSecondary: '#B39DDB',
+    accent: '#FF4081',
+    accentSecondary: '#D500F9',
+    accentText: '#FFFFFF',
+    ringingGradient: ['#1C0B2B', '#3D1A5C', '#6A1B9A'],
+    buttonGradient: ['#D500F9', '#FF4081'],
+    glassEffect: true,
   },
   blossom: {
     id: 'blossom',
@@ -85,6 +91,7 @@ export const THEMES: Record<ThemeId, ThemeConfig> = {
     accentSecondary: '#C084FC',
     accentText: '#2A0F22',
     ringingGradient: ['#180F1A', '#3B1B36', '#6A2F58'],
+    buttonGradient: ['#F472B6', '#F472B6'],
   },
   obsidian: {
     id: 'obsidian',
@@ -101,6 +108,7 @@ export const THEMES: Record<ThemeId, ThemeConfig> = {
     accentSecondary: '#C9A15A',
     accentText: '#FFFFFF',
     ringingGradient: ['#0A0708', '#2B0910', '#5C0E1D'],
+    buttonGradient: ['#E11D48', '#E11D48'],
   },
 };
 
