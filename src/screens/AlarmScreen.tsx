@@ -21,7 +21,6 @@ export default function AlarmScreen() {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const styles = createStyles(theme);
-  const isGlass = Boolean(theme.glassEffect);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -101,8 +100,6 @@ export default function AlarmScreen() {
 
   const noDaysSelected = settings.repeatDays.length === 0;
   const isArmButtonDisabled = noDaysSelected && !settings.isArmed;
-  const showFabGradient = isGlass && !isArmButtonDisabled && !settings.isArmed;
-  const showFabFlat = !isGlass && !isArmButtonDisabled && !settings.isArmed;
 
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -128,7 +125,6 @@ export default function AlarmScreen() {
 
       <View style={styles.body}>
         <View style={styles.card}>
-          <View style={[styles.leftBar, { backgroundColor: theme.accent }]} />
           <View style={styles.cardInner}>
             <View style={styles.cardHeaderRow}>
               <View style={[styles.iconBadge, { backgroundColor: `${theme.accent}26` }]}>
@@ -256,9 +252,14 @@ export default function AlarmScreen() {
         <Pressable
           style={({ pressed }) => [
             styles.fab,
-            showFabFlat && { backgroundColor: theme.accent },
+            {
+              backgroundColor: settings.isArmed
+                ? SEMANTIC_COLORS.error
+                : isArmButtonDisabled
+                ? '#333333'
+                : theme.accent,
+            },
             isArmButtonDisabled && styles.fabDisabled,
-            settings.isArmed && styles.fabArmed,
             pressed && !isArmButtonDisabled && styles.fabPressed,
           ]}
           onPress={toggleArmed}
@@ -268,15 +269,12 @@ export default function AlarmScreen() {
             isArmButtonDisabled ? 'Select at least one repeat day before arming the alarm.' : undefined
           }
         >
-          {showFabGradient && (
-            <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFillObject} />
-          )}
           <Ionicons
             name={settings.isArmed ? 'close-circle' : 'shield-checkmark'}
             size={22}
-            color={settings.isArmed ? SEMANTIC_COLORS.error : theme.accentText}
+            color="#FFFFFF"
           />
-          <Text style={[styles.fabText, settings.isArmed && { color: SEMANTIC_COLORS.error }]}>
+          <Text style={styles.fabText}>
             {settings.isArmed ? 'Cancel alarm' : 'Arm alarm'}
           </Text>
         </Pressable>
@@ -321,9 +319,8 @@ function createStyles(theme: ThemeConfig) {
     },
     heroPillText: { color: theme.text, fontSize: 12, fontWeight: '700' },
 
-    card: { flexDirection: 'row', backgroundColor: theme.card, borderRadius: SHAPE.xl, marginBottom: 20, overflow: 'hidden',
+    card: { backgroundColor: theme.card, borderRadius: SHAPE.xl, marginBottom: 20, overflow: 'hidden',
       shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 5, elevation: 3 },
-    leftBar: { width: 5 },
     cardInner: { flex: 1, padding: 20 },
     cardHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
     iconBadge: { width: 36, height: 36, borderRadius: SHAPE.full, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
@@ -353,13 +350,20 @@ function createStyles(theme: ThemeConfig) {
 
     fab: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-      borderRadius: SHAPE.full, paddingVertical: 17, marginBottom: 12, overflow: 'hidden',
+      borderRadius: SHAPE.full, paddingVertical: 17, marginBottom: 12,
       shadowColor: theme.accent, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 5,
     },
-    fabArmed: { backgroundColor: theme.card, borderWidth: 1.5, borderColor: SEMANTIC_COLORS.error, shadowOpacity: 0, elevation: 0 },
-    fabDisabled: { backgroundColor: '#333333', opacity: 0.6, shadowOpacity: 0 },
+    fabDisabled: {
+      opacity: 0.6,
+      shadowOpacity: 0,
+      elevation: 0,
+    },
     fabPressed: { opacity: 0.85, transform: [{ scale: 0.99 }] },
-    fabText: { color: theme.accentText, fontSize: 16, fontWeight: '800' },
+    fabText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '800',
+    },
 
     tonalButton: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
