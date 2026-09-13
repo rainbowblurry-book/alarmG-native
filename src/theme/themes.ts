@@ -74,7 +74,6 @@ export const THEMES: Record<ThemeId, ThemeConfig> = {
     accentText: '#FFFFFF',
     ringingGradient: ['#1C0B2B', '#3D1A5C', '#6A1B9A'],
     buttonGradient: ['#D500F9', '#FF4081'],
-    glassEffect: true,
   },
   blossom: {
     id: 'blossom',
