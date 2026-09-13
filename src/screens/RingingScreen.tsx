@@ -7,6 +7,7 @@ import { useAudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { useSettings } from '../context/SettingsContext';
 import { useWakeFlow } from '../context/WakeFlowContext';
 import { useTheme } from '../context/ThemeContext';
@@ -28,6 +29,7 @@ export default function RingingScreen() {
   } = useWakeFlow();
 
   const styles = createStyles(theme);
+  const isGlass = Boolean(theme.glassEffect);
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [sensorAvailable, setSensorAvailable] = useState(true);
@@ -223,7 +225,10 @@ export default function RingingScreen() {
         {wakeFlow.status === 'ringing' ? (
           <>
             <View style={styles.topSection}>
-              <View style={styles.statusPill}>
+              <View style={[styles.statusPill, isGlass && styles.statusPillTransparent]}>
+                {isGlass && (
+                  <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
+                )}
                 <View style={styles.statusDot} />
                 <Text style={styles.statusPillText}>Alarm active</Text>
               </View>
@@ -236,7 +241,10 @@ export default function RingingScreen() {
 
             <View style={styles.middleSection}>
               {settings.movementEnabled && (
-                <View style={styles.card}>
+                <View style={[styles.card, isGlass && styles.cardTransparent]}>
+                  {isGlass && (
+                    <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFillObject} />
+                  )}
                   <View style={styles.cardHeaderRow}>
                     <View style={[styles.iconBadge, { backgroundColor: `${theme.accent}30` }]}>
                       <Ionicons name="walk" size={16} color={theme.accent} />
@@ -304,10 +312,17 @@ export default function RingingScreen() {
               </Pressable>
 
               <Pressable
-                style={({ pressed }) => [styles.snoozeButton, pressed && styles.pressed]}
+                style={({ pressed }) => [
+                  styles.snoozeButton,
+                  isGlass && styles.snoozeButtonTransparent,
+                  pressed && styles.pressed,
+                ]}
                 onPress={() => setIsKeypadOpen(true)}
                 accessibilityLabel="Snooze with PIN"
               >
+                {isGlass && (
+                  <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFillObject} />
+                )}
                 <Ionicons name="moon-outline" size={16} color={theme.accent} />
                 <Text style={styles.snoozeButtonText}>Snooze with PIN</Text>
               </Pressable>
@@ -332,7 +347,10 @@ export default function RingingScreen() {
         ) : (
           <>
             <View style={styles.topSection}>
-              <View style={[styles.statusPill, styles.statusPillSnooze]}>
+              <View style={[styles.statusPill, styles.statusPillSnooze, isGlass && styles.statusPillTransparent]}>
+                {isGlass && (
+                  <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
+                )}
                 <Ionicons name="moon" size={13} color={theme.accent} />
                 <Text style={styles.statusPillText}>Snoozed - #{wakeFlow.snoozeCount}</Text>
               </View>
@@ -431,7 +449,10 @@ export default function RingingScreen() {
           onRequestClose={() => setIsKeypadOpen(false)}
         >
           <View style={styles.keypadOverlay}>
-            <View style={styles.keypadContainer}>
+            <View style={[styles.keypadContainer, isGlass && styles.keypadContainerTransparent]}>
+              {isGlass && (
+                <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
+              )}
               <Text style={styles.keypadTitle}>Snooze PIN</Text>
 
               <View style={[styles.pinDisplay, pinError && styles.pinDisplayError]}>
@@ -498,8 +519,9 @@ function createStyles(theme: ThemeConfig) {
     topSection: { alignItems: 'center', paddingTop: 24 },
     statusPill: {
       flexDirection: 'row', alignItems: 'center', gap: 6,
-      backgroundColor: cardBg, paddingHorizontal: 16, paddingVertical: 7, borderRadius: 999, marginBottom: 16,
+      backgroundColor: cardBg, paddingHorizontal: 16, paddingVertical: 7, borderRadius: 999, marginBottom: 16, overflow: 'hidden',
     },
+    statusPillTransparent: { backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
     statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: SEMANTIC_COLORS.success },
     statusPillSnooze: { borderWidth: 1, borderColor: theme.accent },
     statusPillText: { color: theme.text, fontWeight: '700', fontSize: 13 },
@@ -512,7 +534,8 @@ function createStyles(theme: ThemeConfig) {
     crueltyHintText: { color: SEMANTIC_COLORS.warning, fontWeight: '700', fontSize: 12, textAlign: 'center' },
 
     middleSection: { flex: 1, justifyContent: 'center', gap: 16 },
-    card: { backgroundColor: cardBg, borderRadius: SHAPE_XL, padding: 20 },
+    card: { backgroundColor: cardBg, borderRadius: SHAPE_XL, padding: 20, overflow: 'hidden' },
+    cardTransparent: { backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
     cardHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 10 },
     iconBadge: { width: 28, height: 28, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
     cardTitle: { color: theme.text, fontSize: 15, fontWeight: '800', fontFamily: theme.fontFamily },
@@ -527,7 +550,8 @@ function createStyles(theme: ThemeConfig) {
     scanButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 999, paddingVertical: 18, overflow: 'hidden' },
     scanButtonDisabled: { backgroundColor: '#333333', opacity: 0.7 },
     scanButtonText: { color: theme.accentText, fontSize: 16, fontWeight: '800' },
-    snoozeButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: cardBg, borderRadius: 999, paddingVertical: 14 },
+    snoozeButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: cardBg, borderRadius: 999, paddingVertical: 14, overflow: 'hidden' },
+    snoozeButtonTransparent: { backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
     snoozeButtonText: { color: theme.accent, fontWeight: '700' },
     exitPreviewButton: { paddingVertical: 10, alignItems: 'center' },
     exitPreviewButtonText: { color: theme.textSecondary, fontSize: 12 },
@@ -548,7 +572,8 @@ function createStyles(theme: ThemeConfig) {
     cameraFooter: { padding: 32, paddingBottom: 48, alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' },
 
     keypadOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', padding: 24 },
-    keypadContainer: { backgroundColor: theme.card, borderRadius: SHAPE_XL, padding: 24 },
+    keypadContainer: { backgroundColor: theme.card, borderRadius: SHAPE_XL, padding: 24, overflow: 'hidden' },
+    keypadContainerTransparent: { backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
     keypadTitle: { color: theme.accent, fontWeight: '800', fontSize: 14, textAlign: 'center', marginBottom: 12, textTransform: 'uppercase' },
     pinDisplay: { backgroundColor: '#000', borderRadius: 14, paddingVertical: 12, marginBottom: 8 },
     pinDisplayError: { borderColor: SEMANTIC_COLORS.error, borderWidth: 1 },
