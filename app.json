@@ -11,7 +11,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#162748"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true
     },
@@ -48,7 +50,8 @@
         }
       ],
       "expo-notifications",
-      "./plugins/withAlarmManifest.js"
+      "./plugins/withAlarmManifest.js",
+      "expo-font"
     ],
     "extra": {
       "eas": {
