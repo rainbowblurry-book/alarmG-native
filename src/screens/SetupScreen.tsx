@@ -38,6 +38,7 @@ export default function SetupScreen() {
   const { settings, updateSettings } = useSettings();
   const { theme } = useTheme();
   const styles = createStyles(theme);
+  const isGlass = Boolean(theme.glassEffect);
 
   const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(false);
@@ -165,11 +166,17 @@ export default function SetupScreen() {
             )}
 
             <Pressable
-              style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.actionButton,
+                !isGlass && { backgroundColor: theme.accent },
+                pressed && styles.pressed,
+              ]}
               onPress={handleOpenScanner}
               accessibilityLabel="Scan Wake-up Item Barcode"
             >
-              <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFillObject} />
+              {isGlass && (
+                <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFillObject} />
+              )}
               <Ionicons name="scan-outline" size={16} color={theme.accentText} />
               <Text style={[styles.actionButtonText, { color: theme.accentText }]}>
                 {isBarcodeConfigured ? 'Re-scan barcode' : 'Scan barcode'}
@@ -217,6 +224,7 @@ export default function SetupScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.actionButton,
+                !isGlass && { backgroundColor: theme.accent },
                 pinButtonDisabled && styles.actionButtonDisabled,
                 pressed && !pinButtonDisabled && styles.pressed,
               ]}
@@ -224,7 +232,7 @@ export default function SetupScreen() {
               disabled={pinButtonDisabled}
               accessibilityLabel="Save snooze PIN"
             >
-              {!pinButtonDisabled && (
+              {isGlass && !pinButtonDisabled && (
                 <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFillObject} />
               )}
               <Ionicons name="save-outline" size={16} color={theme.accentText} />
@@ -303,8 +311,14 @@ export default function SetupScreen() {
               <Text style={styles.permissionTitle}>Camera permission required</Text>
               <Text style={styles.permissionText}>Camera access is needed to scan your wake-up item.</Text>
 
-              <Pressable style={styles.actionButton} onPress={() => Linking.openSettings()} accessibilityLabel="Open app settings">
-                <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFillObject} />
+              <Pressable
+                style={[styles.actionButton, !isGlass && { backgroundColor: theme.accent }]}
+                onPress={() => Linking.openSettings()}
+                accessibilityLabel="Open app settings"
+              >
+                {isGlass && (
+                  <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFillObject} />
+                )}
                 <Text style={[styles.actionButtonText, { color: theme.accentText }]}>Open Settings</Text>
               </Pressable>
 
@@ -325,12 +339,16 @@ export default function SetupScreen() {
                   accessibilityLabel="Manual barcode input"
                 />
                 <Pressable
-                  style={[styles.actionButton, manualBarcodeDisabled && styles.actionButtonDisabled]}
+                  style={[
+                    styles.actionButton,
+                    !isGlass && { backgroundColor: theme.accent },
+                    manualBarcodeDisabled && styles.actionButtonDisabled,
+                  ]}
                   onPress={handleManualSubmit}
                   disabled={manualBarcodeDisabled}
                   accessibilityLabel="Save manual barcode"
                 >
-                  {!manualBarcodeDisabled && (
+                  {isGlass && !manualBarcodeDisabled && (
                     <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFillObject} />
                   )}
                   <Text style={[styles.actionButtonText, { color: theme.accentText }]}>Save Manual Barcode</Text>

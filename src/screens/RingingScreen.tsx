@@ -227,7 +227,7 @@ export default function RingingScreen() {
             <View style={styles.topSection}>
               <View style={[styles.statusPill, isGlass && styles.statusPillTransparent]}>
                 {isGlass && (
-                  <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
+                  <BlurView intensity={60} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFillObject} />
                 )}
                 <View style={styles.statusDot} />
                 <Text style={styles.statusPillText}>Alarm active</Text>
@@ -243,7 +243,7 @@ export default function RingingScreen() {
               {settings.movementEnabled && (
                 <View style={[styles.card, isGlass && styles.cardTransparent]}>
                   {isGlass && (
-                    <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFillObject} />
+                    <BlurView intensity={60} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFillObject} />
                   )}
                   <View style={styles.cardHeaderRow}>
                     <View style={[styles.iconBadge, { backgroundColor: `${theme.accent}30` }]}>
@@ -295,6 +295,7 @@ export default function RingingScreen() {
               <Pressable
                 style={({ pressed }) => [
                   styles.scanButton,
+                  !isGlass && { backgroundColor: theme.accent },
                   !isMovementComplete && styles.scanButtonDisabled,
                   pressed && isMovementComplete && styles.pressed,
                 ]}
@@ -302,7 +303,7 @@ export default function RingingScreen() {
                 disabled={!isMovementComplete}
                 accessibilityLabel="Scan to Disarm"
               >
-                {isMovementComplete && (
+                {isGlass && isMovementComplete && (
                   <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFillObject} />
                 )}
                 <Ionicons name="scan" size={18} color={theme.accentText} />
@@ -321,7 +322,7 @@ export default function RingingScreen() {
                 accessibilityLabel="Snooze with PIN"
               >
                 {isGlass && (
-                  <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFillObject} />
+                  <BlurView intensity={60} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFillObject} />
                 )}
                 <Ionicons name="moon-outline" size={16} color={theme.accent} />
                 <Text style={styles.snoozeButtonText}>Snooze with PIN</Text>
@@ -349,7 +350,7 @@ export default function RingingScreen() {
             <View style={styles.topSection}>
               <View style={[styles.statusPill, styles.statusPillSnooze, isGlass && styles.statusPillTransparent]}>
                 {isGlass && (
-                  <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFillObject} />
+                  <BlurView intensity={60} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFillObject} />
                 )}
                 <Ionicons name="moon" size={13} color={theme.accent} />
                 <Text style={styles.statusPillText}>Snoozed - #{wakeFlow.snoozeCount}</Text>
@@ -376,11 +377,17 @@ export default function RingingScreen() {
 
             <View style={styles.bottomSection}>
               <Pressable
-                style={({ pressed }) => [styles.scanButton, pressed && styles.pressed]}
+                style={({ pressed }) => [
+                  styles.scanButton,
+                  !isGlass && { backgroundColor: theme.accent },
+                  pressed && styles.pressed,
+                ]}
                 onPress={handleOpenDisarmScanner}
                 accessibilityLabel="Scan to Disarm Now"
               >
-                <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFillObject} />
+                {isGlass && (
+                  <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFillObject} />
+                )}
                 <Ionicons name="scan" size={18} color={theme.accentText} />
                 <Text style={styles.scanButtonText}>Scan to disarm now</Text>
               </Pressable>
@@ -451,7 +458,7 @@ export default function RingingScreen() {
           <View style={styles.keypadOverlay}>
             <View style={[styles.keypadContainer, isGlass && styles.keypadContainerTransparent]}>
               {isGlass && (
-                <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
+                <BlurView intensity={70} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFillObject} />
               )}
               <Text style={styles.keypadTitle}>Snooze PIN</Text>
 
@@ -521,7 +528,7 @@ function createStyles(theme: ThemeConfig) {
       flexDirection: 'row', alignItems: 'center', gap: 6,
       backgroundColor: cardBg, paddingHorizontal: 16, paddingVertical: 7, borderRadius: 999, marginBottom: 16, overflow: 'hidden',
     },
-    statusPillTransparent: { backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
+    statusPillTransparent: { backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
     statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: SEMANTIC_COLORS.success },
     statusPillSnooze: { borderWidth: 1, borderColor: theme.accent },
     statusPillText: { color: theme.text, fontWeight: '700', fontSize: 13 },
@@ -535,7 +542,7 @@ function createStyles(theme: ThemeConfig) {
 
     middleSection: { flex: 1, justifyContent: 'center', gap: 16 },
     card: { backgroundColor: cardBg, borderRadius: SHAPE_XL, padding: 20, overflow: 'hidden' },
-    cardTransparent: { backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
+    cardTransparent: { backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
     cardHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 10 },
     iconBadge: { width: 28, height: 28, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
     cardTitle: { color: theme.text, fontSize: 15, fontWeight: '800', fontFamily: theme.fontFamily },
@@ -551,7 +558,7 @@ function createStyles(theme: ThemeConfig) {
     scanButtonDisabled: { backgroundColor: '#333333', opacity: 0.7 },
     scanButtonText: { color: theme.accentText, fontSize: 16, fontWeight: '800' },
     snoozeButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: cardBg, borderRadius: 999, paddingVertical: 14, overflow: 'hidden' },
-    snoozeButtonTransparent: { backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
+    snoozeButtonTransparent: { backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
     snoozeButtonText: { color: theme.accent, fontWeight: '700' },
     exitPreviewButton: { paddingVertical: 10, alignItems: 'center' },
     exitPreviewButtonText: { color: theme.textSecondary, fontSize: 12 },
@@ -573,7 +580,7 @@ function createStyles(theme: ThemeConfig) {
 
     keypadOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', padding: 24 },
     keypadContainer: { backgroundColor: theme.card, borderRadius: SHAPE_XL, padding: 24, overflow: 'hidden' },
-    keypadContainerTransparent: { backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
+    keypadContainerTransparent: { backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
     keypadTitle: { color: theme.accent, fontWeight: '800', fontSize: 14, textAlign: 'center', marginBottom: 12, textTransform: 'uppercase' },
     pinDisplay: { backgroundColor: '#000', borderRadius: 14, paddingVertical: 12, marginBottom: 8 },
     pinDisplayError: { borderColor: SEMANTIC_COLORS.error, borderWidth: 1 },

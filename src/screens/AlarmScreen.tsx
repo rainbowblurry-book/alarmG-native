@@ -21,6 +21,7 @@ export default function AlarmScreen() {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const styles = createStyles(theme);
+  const isGlass = Boolean(theme.glassEffect);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -100,7 +101,8 @@ export default function AlarmScreen() {
 
   const noDaysSelected = settings.repeatDays.length === 0;
   const isArmButtonDisabled = noDaysSelected && !settings.isArmed;
-  const showFabGradient = !isArmButtonDisabled && !settings.isArmed;
+  const showFabGradient = isGlass && !isArmButtonDisabled && !settings.isArmed;
+  const showFabFlat = !isGlass && !isArmButtonDisabled && !settings.isArmed;
 
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -254,6 +256,7 @@ export default function AlarmScreen() {
         <Pressable
           style={({ pressed }) => [
             styles.fab,
+            showFabFlat && { backgroundColor: theme.accent },
             isArmButtonDisabled && styles.fabDisabled,
             settings.isArmed && styles.fabArmed,
             pressed && !isArmButtonDisabled && styles.fabPressed,
