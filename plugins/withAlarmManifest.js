@@ -12,9 +12,13 @@ function withAlarmManifest(config) {
       activity.$['android:name']?.endsWith('MainActivity')
     );
 
+    // MainActivity is the normal app surface. It must not stay visible over
+    // Android's lock screen or wake the display during ordinary app use.
+    // A future, dedicated AlarmActivity will own these flags only while an
+    // alarm is genuinely ringing.
     if (mainActivity) {
-      mainActivity.$['android:showWhenLocked'] = 'true';
-      mainActivity.$['android:turnScreenOn'] = 'true';
+      delete mainActivity.$['android:showWhenLocked'];
+      delete mainActivity.$['android:turnScreenOn'];
     }
 
     return config;
