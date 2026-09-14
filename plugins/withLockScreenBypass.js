@@ -3,12 +3,21 @@ const fs = require('fs');
 const path = require('path');
 
 /**
- * NEW plugin. Adds a tiny native module ("LockScreenBypass") that lets
- * JS toggle Activity.setShowWhenLocked()/setTurnScreenOn() at RUNTIME.
- * This replaces the old static manifest attributes: the app behaves
- * like a normal app (goes to background when phone is locked) UNLESS
- * JS explicitly calls LockScreenBypass.setEnabled(true) — which
- * WakeFlowContext should do only while status is 'ringing' or 'snoozed'.
+ * Adds a tiny native module ("LockScreenBypass") that lets JS toggle
+ * Activity.setShowWhenLocked()/setTurnScreenOn() at RUNTIME. This replaces
+ * static manifest attributes: the app behaves like a normal app (goes to
+ * background when phone is locked) UNLESS JS explicitly calls
+ * LockScreenBypass.setEnabled(true) — which WakeFlowContext does only
+ * while status is 'ringing' or 'snoozed'.
+ *
+ * v2 fix: withPackageRegistration now targets this project's actual
+ * MainApplication.kt template, which uses:
+ *   packageList = PackageList(this).packages.apply { ... }
+ * (the new-architecture / ExpoReactHostFactory template). The previous
+ * version only matched an older `val packages = PackageList(this).packages`
+ * / `return PackageList(this).packages` pattern that does not exist here,
+ * so the package was silently never added — confirmed via the generated
+ * MainApplication.kt pasted by the user (import present, add() call missing).
  */
 function withLockScreenBypass(config) {
   config = withNativeModuleFile(config);
@@ -94,25 +103,50 @@ class LockScreenBypassPackage : ReactPackage {
 function withPackageRegistration(config) {
   return withMainApplication(config, (config) => {
     let contents = config.modResults.contents;
-    const importLine = `import ${config.android.package}.LockScreenBypassPackage`;
-    if (!contents.includes(importLine)) {
+    const pkg = config.android.package;
+
+    // Only add the cross-file import if LockScreenBypassPackage lives in a
+    // different package than MainApplication (same-package imports are
+    // redundant/unnecessary in Kotlin and can trigger a lint warning).
+    const importLine = `import ${pkg}.LockScreenBypassPackage`;
+    const packageDeclMatch = contents.match(/^package\s+([\w.]+)/m);
+    const ownPackage = packageDeclMatch ? packageDeclMatch[1] : null;
+    if (ownPackage !== pkg && !contents.includes(importLine)) {
       contents = contents.replace(
         /^package .+$/m,
         (match) => `${match}\n\n${importLine}`
       );
     }
+
     if (!contents.includes('LockScreenBypassPackage()')) {
-      contents = contents.replace(
-        /(val packages = PackageList\(this\)\.packages)/,
-        `$1\n              packages.add(LockScreenBypassPackage())`
-      );
-      if (!contents.includes('LockScreenBypassPackage()')) {
+      // Matches this project's actual template:
+      //   packageList = PackageList(this).packages.apply {
+      //     // comment...
+      //   }
+      const applyBlockPattern = /(PackageList\(this\)\.packages\.apply\s*\{)/;
+      if (applyBlockPattern.test(contents)) {
         contents = contents.replace(
-          /(return\s+PackageList\(this\)\.packages)/,
-          `val packages = PackageList(this).packages\n              packages.add(LockScreenBypassPackage())\n              return packages`
+          applyBlockPattern,
+          `$1\n            add(LockScreenBypassPackage())`
         );
+      } else {
+        // Fallback for older/alternate templates without .apply{} wrapping.
+        const valPattern = /(val packages = PackageList\(this\)\.packages)/;
+        const returnPattern = /(return\s+PackageList\(this\)\.packages)/;
+        if (valPattern.test(contents)) {
+          contents = contents.replace(
+            valPattern,
+            `$1\n              packages.add(LockScreenBypassPackage())`
+          );
+        } else if (returnPattern.test(contents)) {
+          contents = contents.replace(
+            returnPattern,
+            `val packages = PackageList(this).packages\n              packages.add(LockScreenBypassPackage())\n              return packages`
+          );
+        }
       }
     }
+
     config.modResults.contents = contents;
     return config;
   });
