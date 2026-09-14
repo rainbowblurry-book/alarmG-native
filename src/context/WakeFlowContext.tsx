@@ -1,10 +1,14 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useSettings } from './SettingsContext';
+import { setLockScreenBypassEnabled } from '../native/lockScreenBypass';
+
 
 export type WakeFlowStatus = 'idle' | 'ringing' | 'snoozed';
 
+
 const BASE_SNOOZE_SECONDS = 300; // 5 minutes
 const MIN_SNOOZE_SECONDS = 20; // cruelty mode floor, mirrors the original web app's spec
+
 
 export type WakeFlowState = {
   status: WakeFlowStatus;
@@ -14,6 +18,7 @@ export type WakeFlowState = {
   currentSnoozeDurationSeconds: number;
 };
 
+
 const DEFAULT_WAKE_FLOW: WakeFlowState = {
   status: 'idle',
   movementProgress: 0,
@@ -21,6 +26,7 @@ const DEFAULT_WAKE_FLOW: WakeFlowState = {
   snoozeCount: 0,
   currentSnoozeDurationSeconds: BASE_SNOOZE_SECONDS,
 };
+
 
 type WakeFlowContextType = {
   wakeFlow: WakeFlowState;
@@ -32,11 +38,23 @@ type WakeFlowContextType = {
   returnToRingingFromSnooze: () => void;
 };
 
+
 const WakeFlowContext = createContext<WakeFlowContextType | undefined>(undefined);
+
 
 export function WakeFlowProvider({ children }: { children: ReactNode }) {
   const { settings } = useSettings();
   const [wakeFlow, setWakeFlow] = useState<WakeFlowState>(DEFAULT_WAKE_FLOW);
+
+  // LockScreenBypass sync: the native lock-screen-over-keyguard flags must be
+  // ON only while status is 'ringing' or 'snoozed', and OFF the rest of the
+  // time so the app behaves like any normal app when the phone is locked.
+  // Runs on every status change AND once on mount, so a fresh app launch
+  // always starts from a known-clean (bypass disabled) native state.
+  useEffect(() => {
+    setLockScreenBypassEnabled(wakeFlow.status !== 'idle');
+  }, [wakeFlow.status]);
+
 
   const startPreview = () => {
     setWakeFlow({
@@ -48,6 +66,7 @@ export function WakeFlowProvider({ children }: { children: ReactNode }) {
     });
   };
 
+
   const dismissWake = () => {
     setWakeFlow({
       status: 'idle',
@@ -58,12 +77,14 @@ export function WakeFlowProvider({ children }: { children: ReactNode }) {
     });
   };
 
+
   const incrementMovement = (max: number) => {
     setWakeFlow((prev) => ({
       ...prev,
       movementProgress: Math.min(prev.movementProgress + 1, max),
     }));
   };
+
 
   // Cruelty mode: every successive snooze in the same ring cycle halves the
   // previous duration (floor of MIN_SNOOZE_SECONDS), mirroring the original
@@ -73,9 +94,11 @@ export function WakeFlowProvider({ children }: { children: ReactNode }) {
       const nextCount = prev.snoozeCount + 1;
       let duration = BASE_SNOOZE_SECONDS;
 
+
       if (settings.crueltyModeEnabled && prev.snoozeCount > 0) {
         duration = Math.max(MIN_SNOOZE_SECONDS, Math.floor(prev.currentSnoozeDurationSeconds / 2));
       }
+
 
       return {
         ...prev,
@@ -87,13 +110,16 @@ export function WakeFlowProvider({ children }: { children: ReactNode }) {
     });
   };
 
+
   const decrementSnooze = () => {
     setWakeFlow((prev) => {
       if (prev.status !== 'snoozed') {
         return prev;
       }
 
+
       const next = Math.max(0, prev.snoozeSecondsRemaining - 1);
+
 
       return {
         ...prev,
@@ -101,6 +127,7 @@ export function WakeFlowProvider({ children }: { children: ReactNode }) {
       };
     });
   };
+
 
   const returnToRingingFromSnooze = () => {
     setWakeFlow((prev) => ({
@@ -110,6 +137,7 @@ export function WakeFlowProvider({ children }: { children: ReactNode }) {
       snoozeSecondsRemaining: 0,
     }));
   };
+
 
   return (
     <WakeFlowContext.Provider
@@ -127,6 +155,7 @@ export function WakeFlowProvider({ children }: { children: ReactNode }) {
     </WakeFlowContext.Provider>
   );
 }
+
 
 export function useWakeFlow() {
   const context = useContext(WakeFlowContext);

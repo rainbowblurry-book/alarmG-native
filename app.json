@@ -51,6 +51,7 @@
       ],
       "expo-notifications",
       "./plugins/withAlarmManifest.js",
+      "./plugins/withLockScreenBypass.js",
       "expo-font"
     ],
     "extra": {
