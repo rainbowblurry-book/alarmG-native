@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,11 +7,15 @@ import { useSettings } from '../context/SettingsContext';
 import { useWakeFlow } from '../context/WakeFlowContext';
 import { useTheme } from '../context/ThemeContext';
 import { ThemeConfig, SEMANTIC_COLORS } from '../theme/themes';
+import RotaryWheel from '../components/RotaryWheel';
+
 
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const FULL_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+
 const SHAPE = { md: 12, lg: 16, xl: 28, full: 999 };
+
 
 export default function AlarmScreen() {
   const insets = useSafeAreaInsets();
@@ -20,12 +24,15 @@ export default function AlarmScreen() {
   const { theme } = useTheme();
   const [currentTime, setCurrentTime] = useState(new Date());
 
+
   const styles = createStyles(theme);
+
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
 
   const formatLiveTime = (date: Date) => {
     const hh = String(date.getHours()).padStart(2, '0');
@@ -33,32 +40,6 @@ export default function AlarmScreen() {
     return `${hh}:${mm}`;
   };
 
-  const [isEditingHour, setIsEditingHour] = useState(false);
-  const [hourInput, setHourInput] = useState(String(settings.alarmHour).padStart(2, '0'));
-  const [isEditingMinute, setIsEditingMinute] = useState(false);
-  const [minuteInput, setMinuteInput] = useState(String(settings.alarmMinute).padStart(2, '0'));
-
-  useEffect(() => {
-    if (!isEditingHour) setHourInput(String(settings.alarmHour).padStart(2, '0'));
-  }, [settings.alarmHour, isEditingHour]);
-
-  useEffect(() => {
-    if (!isEditingMinute) setMinuteInput(String(settings.alarmMinute).padStart(2, '0'));
-  }, [settings.alarmMinute, isEditingMinute]);
-
-  const commitHour = (raw: string) => {
-    const val = parseInt(raw, 10);
-    const clamped = isNaN(val) ? settings.alarmHour : Math.max(0, Math.min(23, val));
-    updateSettings({ alarmHour: clamped });
-    setHourInput(String(clamped).padStart(2, '0'));
-  };
-
-  const commitMinute = (raw: string) => {
-    const val = parseInt(raw, 10);
-    const clamped = isNaN(val) ? settings.alarmMinute : Math.max(0, Math.min(59, val));
-    updateSettings({ alarmMinute: clamped });
-    setMinuteInput(String(clamped).padStart(2, '0'));
-  };
 
   const toggleDay = (dayIndex: number) => {
     if (settings.isArmed) return;
@@ -69,37 +50,16 @@ export default function AlarmScreen() {
     updateSettings({ repeatDays: newDays });
   };
 
-  const adjustHour = (delta: number) => {
-    if (settings.isArmed) return;
-    let newHour = settings.alarmHour + delta;
-    if (newHour > 23) newHour = 0;
-    if (newHour < 0) newHour = 23;
-    updateSettings({ alarmHour: newHour });
-  };
-
-  const adjustMinute = (delta: number) => {
-    if (settings.isArmed) return;
-    let newMinute = settings.alarmMinute + delta;
-    let newHour = settings.alarmHour;
-    if (newMinute > 59) {
-      newMinute = 0;
-      newHour += 1;
-      if (newHour > 23) newHour = 0;
-    } else if (newMinute < 0) {
-      newMinute = 59;
-      newHour -= 1;
-      if (newHour < 0) newHour = 23;
-    }
-    updateSettings({ alarmHour: newHour, alarmMinute: newMinute });
-  };
 
   const toggleArmed = () => {
     if (settings.repeatDays.length === 0 && !settings.isArmed) return;
     updateSettings({ isArmed: !settings.isArmed });
   };
 
+
   const noDaysSelected = settings.repeatDays.length === 0;
   const isArmButtonDisabled = noDaysSelected && !settings.isArmed;
+
 
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -123,6 +83,7 @@ export default function AlarmScreen() {
         </View>
       </LinearGradient>
 
+
       <View style={styles.body}>
         <View style={styles.card}>
           <View style={styles.cardInner}>
@@ -136,85 +97,47 @@ export default function AlarmScreen() {
               </View>
             </View>
 
-            <View style={styles.timeControlsContainer}>
-              <View style={styles.timeSection}>
-                <Pressable
-                  style={({ pressed }) => [styles.adjustButton, pressed && styles.pressed]}
-                  onPress={() => adjustHour(1)}
-                  accessibilityLabel="Increase hour"
+
+            <View style={styles.wheelRow}>
+              <View style={styles.wheelColumn}>
+                <RotaryWheel
+                  value={settings.alarmHour}
+                  min={0}
+                  max={23}
+                  onChange={(h) => updateSettings({ alarmHour: h })}
+                  side="left"
                   disabled={settings.isArmed}
-                >
-                  <Ionicons name="chevron-up" size={18} color={theme.accent} />
-                </Pressable>
-                <TextInput
-                  style={styles.timeInput}
-                  value={isEditingHour ? hourInput : String(settings.alarmHour).padStart(2, '0')}
-                  editable={!settings.isArmed}
-                  keyboardType="number-pad"
-                  maxLength={2}
-                  selectTextOnFocus
-                  accessibilityLabel="Alarm hour, type to edit"
-                  onFocus={() => {
-                    setIsEditingHour(true);
-                    setHourInput(String(settings.alarmHour).padStart(2, '0'));
-                  }}
-                  onChangeText={(text) => setHourInput(text.replace(/\D/g, '').slice(0, 2))}
-                  onBlur={() => {
-                    setIsEditingHour(false);
-                    commitHour(hourInput);
-                  }}
+                  accentColor={theme.accent}
+                  textColor={theme.text}
+                  textSecondaryColor={theme.textSecondary}
+                  backgroundColor={theme.background}
+                  cardColor={theme.cardAlt}
                 />
-                <Pressable
-                  style={({ pressed }) => [styles.adjustButton, pressed && styles.pressed]}
-                  onPress={() => adjustHour(-1)}
-                  accessibilityLabel="Decrease hour"
-                  disabled={settings.isArmed}
-                >
-                  <Ionicons name="chevron-down" size={18} color={theme.accent} />
-                </Pressable>
-                <Text style={styles.timeSectionLabel}>HOUR</Text>
+                <Text style={styles.wheelLabel}>HOUR</Text>
               </View>
+
 
               <Text style={styles.timeColon}>:</Text>
 
-              <View style={styles.timeSection}>
-                <Pressable
-                  style={({ pressed }) => [styles.adjustButton, pressed && styles.pressed]}
-                  onPress={() => adjustMinute(1)}
-                  accessibilityLabel="Increase minute"
+
+              <View style={styles.wheelColumn}>
+                <RotaryWheel
+                  value={settings.alarmMinute}
+                  min={0}
+                  max={59}
+                  onChange={(m) => updateSettings({ alarmMinute: m })}
+                  side="right"
                   disabled={settings.isArmed}
-                >
-                  <Ionicons name="chevron-up" size={18} color={theme.accent} />
-                </Pressable>
-                <TextInput
-                  style={styles.timeInput}
-                  value={isEditingMinute ? minuteInput : String(settings.alarmMinute).padStart(2, '0')}
-                  editable={!settings.isArmed}
-                  keyboardType="number-pad"
-                  maxLength={2}
-                  selectTextOnFocus
-                  accessibilityLabel="Alarm minute, type to edit"
-                  onFocus={() => {
-                    setIsEditingMinute(true);
-                    setMinuteInput(String(settings.alarmMinute).padStart(2, '0'));
-                  }}
-                  onChangeText={(text) => setMinuteInput(text.replace(/\D/g, '').slice(0, 2))}
-                  onBlur={() => {
-                    setIsEditingMinute(false);
-                    commitMinute(minuteInput);
-                  }}
+                  accentColor={theme.accent}
+                  textColor={theme.text}
+                  textSecondaryColor={theme.textSecondary}
+                  backgroundColor={theme.background}
+                  cardColor={theme.cardAlt}
                 />
-                <Pressable
-                  style={({ pressed }) => [styles.adjustButton, pressed && styles.pressed]}
-                  onPress={() => adjustMinute(-1)}
-                  accessibilityLabel="Decrease minute"
-                  disabled={settings.isArmed}
-                >
-                  <Ionicons name="chevron-down" size={18} color={theme.accent} />
-                </Pressable>
-                <Text style={styles.timeSectionLabel}>MIN</Text>
+                <Text style={styles.wheelLabel}>MIN</Text>
               </View>
             </View>
+
 
             <View style={styles.segmentedContainer}>
               {DAYS.map((day, index) => {
@@ -240,6 +163,7 @@ export default function AlarmScreen() {
               })}
             </View>
 
+
             {noDaysSelected && (
               <View style={styles.warningRow}>
                 <Ionicons name="alert-circle" size={14} color={SEMANTIC_COLORS.warning} />
@@ -248,6 +172,7 @@ export default function AlarmScreen() {
             )}
           </View>
         </View>
+
 
         <Pressable
           style={({ pressed }) => [
@@ -279,6 +204,7 @@ export default function AlarmScreen() {
           </Text>
         </Pressable>
 
+
         {settings.isArmed && (
           <>
             <Pressable
@@ -299,10 +225,12 @@ export default function AlarmScreen() {
   );
 }
 
+
 function createStyles(theme: ThemeConfig) {
   return StyleSheet.create({
     container: { flexGrow: 1, backgroundColor: theme.background },
     body: { paddingHorizontal: 16, paddingTop: 20 },
+
 
     hero: { paddingBottom: 28, paddingHorizontal: 24, alignItems: 'center', borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
     heroLabel: {
@@ -319,6 +247,7 @@ function createStyles(theme: ThemeConfig) {
     },
     heroPillText: { color: theme.text, fontSize: 12, fontWeight: '700' },
 
+
     card: { backgroundColor: theme.card, borderRadius: SHAPE.xl, marginBottom: 20, overflow: 'hidden',
       shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 5, elevation: 3 },
     cardInner: { flex: 1, padding: 20 },
@@ -327,15 +256,12 @@ function createStyles(theme: ThemeConfig) {
     cardTitle: { fontSize: 19, fontWeight: '800', color: theme.text, fontFamily: theme.fontFamily },
     cardCaption: { fontSize: 12, color: theme.textSecondary, marginTop: 1 },
 
-    timeControlsContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 22, gap: 4 },
-    timeSection: { alignItems: 'center', gap: 2 },
-    adjustButton: { width: 34, height: 26, borderRadius: SHAPE.md, backgroundColor: theme.background, alignItems: 'center', justifyContent: 'center' },
-    timeInput: {
-      fontSize: 44, fontWeight: '800', color: theme.text, width: 70, textAlign: 'center',
-      fontFamily: theme.fontFamily, paddingVertical: 2,
-    },
-    timeSectionLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1, color: theme.textSecondary, marginTop: 2 },
+
+    wheelRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 22, gap: 8 },
+    wheelColumn: { alignItems: 'center', gap: 6 },
+    wheelLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1, color: theme.textSecondary },
     timeColon: { fontSize: 40, fontWeight: '800', color: theme.textSecondary, marginHorizontal: 2, alignSelf: 'center' },
+
 
     segmentedContainer: { flexDirection: 'row', borderRadius: SHAPE.full, borderWidth: 1, borderColor: theme.border, overflow: 'hidden' },
     segment: { flex: 1, height: 42, alignItems: 'center', justifyContent: 'center', borderLeftWidth: 1, borderLeftColor: theme.border },
@@ -345,8 +271,10 @@ function createStyles(theme: ThemeConfig) {
     segmentText: { color: theme.textSecondary, fontWeight: '700', fontSize: 13 },
     segmentTextSelected: { color: theme.accentText },
 
+
     warningRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14, justifyContent: 'center' },
     warningText: { color: SEMANTIC_COLORS.warning, fontWeight: '700', fontSize: 12 },
+
 
     fab: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
@@ -365,12 +293,14 @@ function createStyles(theme: ThemeConfig) {
       fontWeight: '800',
     },
 
+
     tonalButton: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
       backgroundColor: theme.card, borderWidth: 1, borderColor: theme.accent, borderRadius: SHAPE.full, paddingVertical: 12, marginBottom: 8,
     },
     tonalButtonText: { color: theme.accent, fontSize: 14, fontWeight: '700' },
     previewHint: { color: theme.textSecondary, fontSize: 12, textAlign: 'center', marginBottom: 24, lineHeight: 18 },
+
 
     pressed: { opacity: 0.7 },
   });
