@@ -20,7 +20,7 @@
     "android": {
       "package": "com.rainbowblurry.wakeupnative",
       "adaptiveIcon": {
-        "backgroundColor": "#0a0a0a",
+         "backgroundImage": "./assets/adaptive-icon-background.png",
         "foregroundImage": "./assets/adaptive-icon-foreground.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
