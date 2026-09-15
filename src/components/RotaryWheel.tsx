@@ -84,6 +84,7 @@ export default function RotaryWheel({
 
       <Animated.ScrollView
         ref={scrollRef}
+        nestedScrollEnabled={true}
         showsVerticalScrollIndicator={false}
         snapToInterval={ITEM_HEIGHT}
         decelerationRate="fast"
