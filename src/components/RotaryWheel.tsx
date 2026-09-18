@@ -24,9 +24,13 @@ interface RotaryWheelProps {
  * (free, OS-native) instead of the original's hand-rolled pointer
  * velocity + spring-physics loop. Curvature (bow toward center,
  * scale/opacity fade by distance) is approximated via Animated
- * interpolation driven by scroll position. Full flick-physics can
- * be layered on top later (e.g. with react-native-reanimated)
- * without changing this component's public API.
+ * interpolation driven by scroll position.
+ *
+ * v3: added a layered "poor man's radial glow" halo behind the
+ * center reticle (RN has no native radial-gradient primitive, so
+ * this stacks concentric semi-transparent circles of increasing
+ * size/decreasing opacity) to match the ambient amber bloom seen
+ * in the a8 reference image.
  */
 export default function RotaryWheel({
   value,
@@ -74,11 +78,22 @@ export default function RotaryWheel({
         { backgroundColor: cardColor, borderColor: `${accentColor}33` },
       ]}
     >
+      {/* Ambient radial glow halo behind the center reticle (layered circles) */}
+      <View pointerEvents="none" style={styles.glowLayerContainer}>
+        <View style={[styles.glowRing, styles.glowRingOuter, { backgroundColor: `${accentColor}12` }]} />
+        <View style={[styles.glowRing, styles.glowRingMid, { backgroundColor: `${accentColor}1F` }]} />
+        <View style={[styles.glowRing, styles.glowRingInner, { backgroundColor: `${accentColor}2E` }]} />
+      </View>
+
       <View
         pointerEvents="none"
         style={[
           styles.centerWindow,
-          { borderColor: `${accentColor}B3`, backgroundColor: `${accentColor}0F` },
+          {
+            borderColor: `${accentColor}CC`,
+            backgroundColor: `${accentColor}14`,
+            shadowColor: accentColor,
+          },
         ]}
       />
 
@@ -169,6 +184,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: 'hidden',
   },
+  glowLayerContainer: {
+    position: 'absolute',
+    top: ITEM_HEIGHT * 2,
+    left: 0,
+    right: 0,
+    height: ITEM_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  glowRing: {
+    position: 'absolute',
+    borderRadius: 999,
+  },
+  glowRingOuter: { width: 220, height: 220 },
+  glowRingMid: { width: 150, height: 150 },
+  glowRingInner: { width: 90, height: 90 },
   centerWindow: {
     position: 'absolute',
     top: ITEM_HEIGHT * 2,
@@ -176,8 +208,12 @@ const styles = StyleSheet.create({
     right: 4,
     height: ITEM_HEIGHT,
     borderRadius: 16,
-    borderWidth: 1,
-    zIndex: 5,
+    borderWidth: 1.5,
+    zIndex: 10,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    elevation: 6,
   },
   itemSlot: {
     height: ITEM_HEIGHT,

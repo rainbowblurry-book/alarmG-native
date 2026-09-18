@@ -61,6 +61,13 @@ export default function AlarmScreen() {
   const isArmButtonDisabled = noDaysSelected && !settings.isArmed;
 
 
+  const armGradientColors = settings.isArmed
+    ? [SEMANTIC_COLORS.error, SEMANTIC_COLORS.error]
+    : isArmButtonDisabled
+    ? ['#333333', '#333333']
+    : [theme.accent, theme.accentSecondary ?? theme.accent];
+
+
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
       <LinearGradient colors={theme.ringingGradient} style={[styles.hero, { paddingTop: insets.top + 20 }]}>
@@ -88,7 +95,15 @@ export default function AlarmScreen() {
         <View style={styles.card}>
           <View style={styles.cardInner}>
             <View style={styles.cardHeaderRow}>
-              <View style={[styles.iconBadge, { backgroundColor: `${theme.accent}26` }]}>
+              <View
+                style={[
+                  styles.iconBadge,
+                  {
+                    backgroundColor: `${theme.accent}26`,
+                    shadowColor: theme.accent,
+                  },
+                ]}
+              >
                 <Ionicons name="alarm" size={18} color={theme.accent} />
               </View>
               <View style={{ flex: 1 }}>
@@ -174,35 +189,31 @@ export default function AlarmScreen() {
         </View>
 
 
-        <Pressable
-          style={({ pressed }) => [
-            styles.fab,
-            {
-              backgroundColor: settings.isArmed
-                ? SEMANTIC_COLORS.error
-                : isArmButtonDisabled
-                ? '#333333'
-                : theme.accent,
-            },
-            isArmButtonDisabled && styles.fabDisabled,
-            pressed && !isArmButtonDisabled && styles.fabPressed,
-          ]}
-          onPress={toggleArmed}
-          disabled={isArmButtonDisabled}
-          accessibilityLabel={settings.isArmed ? 'Cancel Alarm' : 'Arm Alarm'}
-          accessibilityHint={
-            isArmButtonDisabled ? 'Select at least one repeat day before arming the alarm.' : undefined
-          }
+        <LinearGradient
+          colors={armGradientColors as [string, string]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[styles.fabGradientWrap, isArmButtonDisabled && styles.fabDisabled]}
         >
-          <Ionicons
-            name={settings.isArmed ? 'close-circle' : 'shield-checkmark'}
-            size={22}
-            color="#FFFFFF"
-          />
-          <Text style={styles.fabText}>
-            {settings.isArmed ? 'Cancel alarm' : 'Arm alarm'}
-          </Text>
-        </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.fab, pressed && !isArmButtonDisabled && styles.fabPressed]}
+            onPress={toggleArmed}
+            disabled={isArmButtonDisabled}
+            accessibilityLabel={settings.isArmed ? 'Cancel Alarm' : 'Arm Alarm'}
+            accessibilityHint={
+              isArmButtonDisabled ? 'Select at least one repeat day before arming the alarm.' : undefined
+            }
+          >
+            <Ionicons
+              name={settings.isArmed ? 'close-circle' : 'shield-checkmark'}
+              size={22}
+              color="#FFFFFF"
+            />
+            <Text style={styles.fabText}>
+              {settings.isArmed ? 'Cancel alarm' : 'Arm alarm'}
+            </Text>
+          </Pressable>
+        </LinearGradient>
 
 
         {settings.isArmed && (
@@ -252,7 +263,10 @@ function createStyles(theme: ThemeConfig) {
       shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 5, elevation: 3 },
     cardInner: { flex: 1, padding: 20 },
     cardHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-    iconBadge: { width: 36, height: 36, borderRadius: SHAPE.full, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    iconBadge: {
+      width: 36, height: 36, borderRadius: SHAPE.full, alignItems: 'center', justifyContent: 'center', marginRight: 12,
+      shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 8, elevation: 4,
+    },
     cardTitle: { fontSize: 19, fontWeight: '800', color: theme.text, fontFamily: theme.fontFamily },
     cardCaption: { fontSize: 12, color: theme.textSecondary, marginTop: 1 },
 
@@ -276,15 +290,22 @@ function createStyles(theme: ThemeConfig) {
     warningText: { color: SEMANTIC_COLORS.warning, fontWeight: '700', fontSize: 12 },
 
 
+    fabGradientWrap: {
+      borderRadius: SHAPE.full,
+      marginBottom: 12,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.45,
+      shadowRadius: 14,
+      elevation: 6,
+    },
     fab: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-      borderRadius: SHAPE.full, paddingVertical: 17, marginBottom: 12,
-      shadowColor: theme.accent, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 5,
+      borderRadius: SHAPE.full, paddingVertical: 17,
     },
     fabDisabled: {
-      opacity: 0.6,
       shadowOpacity: 0,
       elevation: 0,
+      opacity: 0.6,
     },
     fabPressed: { opacity: 0.85, transform: [{ scale: 0.99 }] },
     fabText: {
