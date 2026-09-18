@@ -1,22 +1,29 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Animated, View, Text, StyleSheet, PanResponder } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 
 /**
- * Full spring-physics rotary wheel, ported from the AI-Studio
- * "TactileRotaryWheel" spec (exact constants supplied by the user
- * via Google AI Studio's own technical writeup). Two honest RN
- * limitations vs. the original web version:
- *   1. No CSS blur() filter / true translateZ perspective compositing
- *      in RN -> depth and motion blur are approximated via scale and
- *      opacity falloff instead of literal blur pixels.
- *   2. No Web Audio API in RN -> sound synthesis is stubbed as a
- *      no-op hook (soundHook prop) ready to wire to real audio files
- *      later. Haptics are wired for real via expo-haptics.
+ * Full spring-physics rotary wheel. Stage 1-4 visual overhaul applied
+ * per AI-Studio diagnosis: wider cylinder track + horizon gradients +
+ * caliper ticks (depth), color-falloff numerals + gear notches
+ * (typography), spring-based detent recoil (motion). The ambient glow
+ * backdrop (Stage 2) now lives in AlarmScreen.tsx behind both wheels
+ * instead of inside each track (avoids clipping + GPU ring artifacts).
+ *
+ * RN limitations vs. the original web version, unchanged from before:
+ * no CSS blur()/true translateZ perspective (approximated via scale +
+ * opacity), no Web Audio synthesis (haptics only via expo-haptics).
+ *
+ * Note: detentPulse intentionally stays JS-driven (useNativeDriver:
+ * false) because it also drives borderColor/backgroundColor
+ * interpolation on centerWindow, which isn't safe to mix with a
+ * native-driven transform on the same Animated.Value across RN
+ * versions. Spring feel is preserved via friction/tension tuning.
  */
 
 const UNIT_PIXELS = 54;
-const RENDER_WINDOW = 4; // slots each side of floor(offset)
+const RENDER_WINDOW = 4;
 const CULL_DIFF = 3.6;
 
 const FRICTION_DECAY = 3.4;
@@ -28,6 +35,10 @@ const LOCK_VEL_EPSILON = 0.06;
 const FLICK_VEL_CLAMP = 42;
 const STILLNESS_CUTOFF_MS = 70;
 const HISTORY_MAX = 8;
+
+const TRACK_WIDTH = 146;
+const TRACK_HEIGHT = 256;
+const RETICLE_HEIGHT = 62;
 
 interface WatchRotaryWheelProps {
   value: number;
@@ -42,8 +53,6 @@ interface WatchRotaryWheelProps {
   textSecondaryColor: string;
   backgroundColor: string;
   cardColor: string;
-  onTickHaptic?: () => void;
-  onLockHaptic?: () => void;
 }
 
 export default function WatchRotaryWheel({
@@ -61,7 +70,6 @@ export default function WatchRotaryWheel({
   const range = max - min + 1;
 
   const [offset, setOffset] = useState<number>(value - min);
-  const [velocity, setVelocity] = useState<number>(0);
   const [isLocked, setIsLocked] = useState<boolean>(true);
 
   const offsetRef = useRef<number>(value - min);
@@ -103,12 +111,15 @@ export default function WatchRotaryWheel({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
   }, []);
 
+  // Stage 4: elastic overshoot spring recoil instead of linear timing.
   const triggerRecoil = useCallback(() => {
-    detentPulse.setValue(0);
-    Animated.sequence([
-      Animated.timing(detentPulse, { toValue: 1, duration: 42, useNativeDriver: false }),
-      Animated.timing(detentPulse, { toValue: 0, duration: 98, useNativeDriver: false }),
-    ]).start();
+    detentPulse.setValue(1);
+    Animated.spring(detentPulse, {
+      toValue: 0,
+      friction: 4,
+      tension: 180,
+      useNativeDriver: false,
+    }).start();
   }, [detentPulse]);
 
   const checkTickCrossing = useCallback(
@@ -142,7 +153,6 @@ export default function WatchRotaryWheel({
       velocityRef.current = vel;
       offsetRef.current = pos;
       setOffset(pos);
-      setVelocity(vel);
       setIsLocked(false);
 
       animFrameIdRef.current = requestAnimationFrame(updatePhysics);
@@ -159,7 +169,6 @@ export default function WatchRotaryWheel({
         offsetRef.current = pos;
         velocityRef.current = 0;
         setOffset(pos);
-        setVelocity(0);
         setIsLocked(true);
         animFrameIdRef.current = null;
 
@@ -171,7 +180,6 @@ export default function WatchRotaryWheel({
         velocityRef.current = vel;
         offsetRef.current = pos;
         setOffset(pos);
-        setVelocity(vel);
         setIsLocked(false);
 
         animFrameIdRef.current = requestAnimationFrame(updatePhysics);
@@ -191,7 +199,6 @@ export default function WatchRotaryWheel({
         isDraggingRef.current = true;
         setIsLocked(false);
         velocityRef.current = 0;
-        setVelocity(0);
 
         const now = Date.now();
         lastPointerYRef.current = evt.nativeEvent.pageY;
@@ -221,7 +228,6 @@ export default function WatchRotaryWheel({
         lastPointerTimeRef.current = now;
 
         setOffset(newOffset);
-        setVelocity(velocityRef.current);
       },
       onPanResponderRelease: () => {
         isDraggingRef.current = false;
@@ -270,62 +276,44 @@ export default function WatchRotaryWheel({
     const bowFactor = Math.pow(diff / 3.4, 2) * 36;
     const xOffset = isLeft ? -bowFactor : bowFactor;
     const tangentAngle = (isLeft ? -1 : 1) * (diff * 5.2);
-    const cylinderRotateX = diff * 17.5;
     const translateZ =
       Math.cos(Math.min(Math.PI / 2, Math.abs(diff / 3.5) * (Math.PI / 2))) * 32;
-    return { xOffset, tangentAngle, cylinderRotateX, translateZ };
+    return { xOffset, tangentAngle, translateZ };
   };
 
   return (
-    <View style={[styles.track, { backgroundColor: cardColor, borderColor: `${accentColor}33` }]}>
-      <View pointerEvents="none" style={styles.glowContainer}>
-        <View style={[styles.glowRing, styles.glowOuter, { backgroundColor: `${accentColor}12` }]} />
-        <View style={[styles.glowRing, styles.glowMid, { backgroundColor: `${accentColor}1F` }]} />
-        <View style={[styles.glowRing, styles.glowInner, { backgroundColor: `${accentColor}2E` }]} />
-      </View>
-
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.centerWindow,
-          {
-            borderColor: detentPulse.interpolate({
-              inputRange: [0, 1],
-              outputRange: [`${accentColor}B3`, `${accentColor}F2`],
-            }) as any,
-            backgroundColor: `${accentColor}0F`,
-            shadowColor: accentColor,
-            transform: [
-              {
-                scale: detentPulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.025] }),
-              },
-            ],
-          },
-        ]}
-      />
-
+    <View
+      style={[
+        styles.track,
+        { backgroundColor: cardColor, borderColor: 'rgba(74, 90, 116, 0.35)' },
+      ]}
+    >
+      {/* Stage 1: cylinder rim + gesture area */}
       <View {...panResponder.panHandlers} style={styles.gestureArea}>
         {slots.map((slotIndex) => {
           const diff = slotIndex - offset;
           if (Math.abs(diff) > CULL_DIFF) return null;
 
-          const { xOffset, tangentAngle, cylinderRotateX, translateZ } = getCurve(diff);
+          const { xOffset, tangentAngle, translateZ } = getCurve(diff);
           const yOffset = diff * UNIT_PIXELS;
 
+          // Stage 3: continuous exponential opacity falloff
           const distRatio = Math.min(Math.abs(diff) / 3.2, 1);
           const baseOpacity = Math.max(0.12, 1 - Math.pow(distRatio, 1.4) * 0.88);
           const isCenterSelected = Math.abs(diff) < 0.35 && isLocked;
-          const depthScale = 0.82 + (translateZ / 32) * 0.18;
-          const finalScale = depthScale * (isCenterSelected ? 1.12 : 1);
+          const depthScale = 0.84 + (translateZ / 32) * 0.16;
+          const finalScale = depthScale * (isCenterSelected ? 1.08 : 1.0);
 
           const displayVal = normalizeIndex(slotIndex) + min;
           const label = String(displayVal).padStart(2, '0');
 
-          const color = isCenterSelected
-            ? accentColor
-            : Math.abs(diff) < 0.8
-            ? textColor
-            : textSecondaryColor;
+          // Stage 3: 3-tier color hierarchy
+          let itemColor = textSecondaryColor;
+          if (isCenterSelected) {
+            itemColor = accentColor;
+          } else if (Math.abs(diff) < 0.65) {
+            itemColor = textColor;
+          }
 
           return (
             <View
@@ -343,17 +331,27 @@ export default function WatchRotaryWheel({
                 },
               ]}
             >
+              {/* Stage 1/3: gear notch indicator on the cylinder rim */}
+              <View
+                style={[
+                  styles.gearNotch,
+                  side === 'left' ? { right: -42 } : { left: -42 },
+                  {
+                    backgroundColor: isCenterSelected ? accentColor : '#2A3750',
+                    width: isCenterSelected ? 10 : 6,
+                    opacity: isCenterSelected ? 1 : 0.6,
+                  },
+                ]}
+              />
+
               <Text
                 style={[
                   styles.itemText,
-                  {
-                    color,
-                    fontWeight: isCenterSelected ? '800' : '600',
-                  },
+                  { color: itemColor },
                   isCenterSelected && {
                     textShadowColor: accentColor,
-                    textShadowRadius: 16,
                     textShadowOffset: { width: 0, height: 0 },
+                    textShadowRadius: 18,
                   },
                 ]}
               >
@@ -363,58 +361,131 @@ export default function WatchRotaryWheel({
           );
         })}
       </View>
+
+      {/* Stage 1: center reticle window with caliper ticks */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.centerWindow,
+          {
+            borderColor: `${accentColor}A6`,
+            backgroundColor: `${accentColor}0D`,
+            shadowColor: accentColor,
+            transform: [
+              {
+                scale: detentPulse.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [1.0, 1.038],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <View style={[styles.caliperTick, { left: 4, backgroundColor: accentColor }]} />
+        <View style={[styles.caliperTick, { right: 4, backgroundColor: accentColor }]} />
+      </Animated.View>
+
+      {/* Stage 1: top/bottom horizon fades + specular edge highlight */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={[cardColor, `${cardColor}D9`, 'transparent']}
+        locations={[0, 0.55, 1]}
+        style={styles.horizonTop}
+      />
+      <LinearGradient
+        pointerEvents="none"
+        colors={['transparent', `${cardColor}D9`, cardColor]}
+        locations={[0, 0.45, 1]}
+        style={styles.horizonBottom}
+      />
+      <LinearGradient
+        pointerEvents="none"
+        colors={['transparent', `${accentColor}40`, 'transparent']}
+        locations={[0, 0.5, 1]}
+        style={[styles.specularEdge, side === 'left' ? { right: 0 } : { left: 0 }]}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   track: {
-    width: 84,
-    height: UNIT_PIXELS * 5,
-    borderRadius: 24,
+    width: TRACK_WIDTH,
+    height: TRACK_HEIGHT,
+    borderRadius: 28,
     borderWidth: 1,
     overflow: 'hidden',
+    position: 'relative',
   },
   gestureArea: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  glowContainer: {
-    position: 'absolute',
-    top: UNIT_PIXELS * 2,
-    left: 0,
-    right: 0,
-    height: UNIT_PIXELS,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1,
-  },
-  glowRing: { position: 'absolute', borderRadius: 999 },
-  glowOuter: { width: 220, height: 220 },
-  glowMid: { width: 150, height: 150 },
-  glowInner: { width: 90, height: 90 },
   centerWindow: {
     position: 'absolute',
-    top: UNIT_PIXELS * 2,
-    left: 4,
-    right: 4,
-    height: UNIT_PIXELS,
+    top: (TRACK_HEIGHT - RETICLE_HEIGHT) / 2,
+    left: 8,
+    right: 8,
+    height: RETICLE_HEIGHT,
     borderRadius: 16,
     borderWidth: 1.5,
     zIndex: 10,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOpacity: 0.75,
+    shadowRadius: 18,
+    elevation: 8,
+    justifyContent: 'center',
+  },
+  caliperTick: {
+    position: 'absolute',
+    top: '50%',
+    marginTop: -1.5,
+    width: 6,
+    height: 3,
+    borderRadius: 2,
+  },
+  horizonTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 64,
+    zIndex: 15,
+  },
+  horizonBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 64,
+    zIndex: 15,
+  },
+  specularEdge: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 1,
+    zIndex: 16,
   },
   itemSlot: {
     position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
+    width: '100%',
+    height: UNIT_PIXELS,
   },
   itemText: {
-    fontSize: 30,
+    fontSize: 32,
+    fontWeight: '700',
     fontVariant: ['tabular-nums'],
+    letterSpacing: -1.2,
+    textAlign: 'center',
+  },
+  gearNotch: {
+    position: 'absolute',
+    height: 2.5,
+    borderRadius: 2,
   },
 });

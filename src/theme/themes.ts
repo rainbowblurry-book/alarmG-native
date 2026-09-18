@@ -15,6 +15,7 @@ export interface ThemeConfig {
   accent: string;
   accentSecondary?: string;
   accentText: string;
+  armButtonTextColor?: string;
   ringingGradient: string[];
   buttonGradient: string[];
   glassEffect?: boolean;
@@ -126,6 +127,7 @@ export const THEMES: Record<ThemeId, ThemeConfig> = {
     accent: '#FF701A',
     accentSecondary: '#FF8238',
     accentText: '#FFFFFF',
+    armButtonTextColor: '#07090E',
     ringingGradient: ['#06080E', '#1B0F06', '#3B2107'],
     buttonGradient: ['#FF701A', '#FF8238'],
   },
