@@ -1,4 +1,5 @@
-export type ThemeId = 'minimal' | 'amber' | 'neon' | 'blossom' | 'obsidian';
+export type ThemeId = 'minimal' | 'amber' | 'neon' | 'blossom' | 'obsidian' | 'watch';
+
 
 export interface ThemeConfig {
   id: ThemeId;
@@ -19,11 +20,13 @@ export interface ThemeConfig {
   glassEffect?: boolean;
 }
 
+
 export const SEMANTIC_COLORS = {
   warning: '#F59E0B',
   error: '#F43F5E',
   success: '#10B981',
 };
+
 
 export const THEMES: Record<ThemeId, ThemeConfig> = {
   minimal: {
@@ -109,7 +112,25 @@ export const THEMES: Record<ThemeId, ThemeConfig> = {
     ringingGradient: ['#0A0708', '#2B0910', '#5C0E1D'],
     buttonGradient: ['#E11D48', '#E11D48'],
   },
+  watch: {
+    id: 'watch',
+    name: 'Watch',
+    tagline: 'One-UI Rotary',
+    fontFamily: 'PlusJakartaSans_600SemiBold',
+    background: '#06080E',
+    card: '#0A0E17',
+    cardAlt: '#07090E',
+    border: '#4A5A74',
+    text: '#E3ECFA',
+    textSecondary: '#7184A2',
+    accent: '#FF701A',
+    accentSecondary: '#FF8238',
+    accentText: '#FFFFFF',
+    ringingGradient: ['#06080E', '#1B0F06', '#3B2107'],
+    buttonGradient: ['#FF701A', '#FF8238'],
+  },
 };
+
 
 export const THEME_LIST: ThemeConfig[] = [
   THEMES.minimal,
@@ -117,6 +138,8 @@ export const THEME_LIST: ThemeConfig[] = [
   THEMES.neon,
   THEMES.blossom,
   THEMES.obsidian,
+  THEMES.watch,
 ];
+
 
 export const DEFAULT_THEME_ID: ThemeId = 'minimal';

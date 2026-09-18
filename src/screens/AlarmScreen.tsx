@@ -7,7 +7,7 @@ import { useSettings } from '../context/SettingsContext';
 import { useWakeFlow } from '../context/WakeFlowContext';
 import { useTheme } from '../context/ThemeContext';
 import { ThemeConfig, SEMANTIC_COLORS } from '../theme/themes';
-import RotaryWheel from '../components/RotaryWheel';
+import WatchRotaryWheel from '../components/WatchRotaryWheel';
 
 
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -115,7 +115,7 @@ export default function AlarmScreen() {
 
             <View style={styles.wheelRow}>
               <View style={styles.wheelColumn}>
-                <RotaryWheel
+                <WatchRotaryWheel
                   value={settings.alarmHour}
                   min={0}
                   max={23}
@@ -123,6 +123,7 @@ export default function AlarmScreen() {
                   side="left"
                   disabled={settings.isArmed}
                   accentColor={theme.accent}
+                  accentSecondaryColor={theme.accentSecondary}
                   textColor={theme.text}
                   textSecondaryColor={theme.textSecondary}
                   backgroundColor={theme.background}
@@ -136,7 +137,7 @@ export default function AlarmScreen() {
 
 
               <View style={styles.wheelColumn}>
-                <RotaryWheel
+                <WatchRotaryWheel
                   value={settings.alarmMinute}
                   min={0}
                   max={59}
@@ -144,6 +145,7 @@ export default function AlarmScreen() {
                   side="right"
                   disabled={settings.isArmed}
                   accentColor={theme.accent}
+                  accentSecondaryColor={theme.accentSecondary}
                   textColor={theme.text}
                   textSecondaryColor={theme.textSecondary}
                   backgroundColor={theme.background}
