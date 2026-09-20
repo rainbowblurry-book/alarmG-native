@@ -1,17 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, TextInput } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Pressable, ScrollView, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { useSettings } from '../context/SettingsContext';
 import { useWakeFlow } from '../context/WakeFlowContext';
 import { useTheme } from '../context/ThemeContext';
 import { ThemeConfig, SEMANTIC_COLORS } from '../theme/themes';
+import WatchRotaryWheel from '../components/WatchRotaryWheel';
+
 
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const FULL_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+
 const SHAPE = { md: 12, lg: 16, xl: 28, full: 999 };
+
 
 export default function AlarmScreen() {
   const insets = useSafeAreaInsets();
@@ -19,13 +24,17 @@ export default function AlarmScreen() {
   const { startPreview } = useWakeFlow();
   const { theme } = useTheme();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const buttonScale = useRef(new Animated.Value(1)).current;
+
 
   const styles = createStyles(theme);
+
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
 
   const formatLiveTime = (date: Date) => {
     const hh = String(date.getHours()).padStart(2, '0');
@@ -33,32 +42,6 @@ export default function AlarmScreen() {
     return `${hh}:${mm}`;
   };
 
-  const [isEditingHour, setIsEditingHour] = useState(false);
-  const [hourInput, setHourInput] = useState(String(settings.alarmHour).padStart(2, '0'));
-  const [isEditingMinute, setIsEditingMinute] = useState(false);
-  const [minuteInput, setMinuteInput] = useState(String(settings.alarmMinute).padStart(2, '0'));
-
-  useEffect(() => {
-    if (!isEditingHour) setHourInput(String(settings.alarmHour).padStart(2, '0'));
-  }, [settings.alarmHour, isEditingHour]);
-
-  useEffect(() => {
-    if (!isEditingMinute) setMinuteInput(String(settings.alarmMinute).padStart(2, '0'));
-  }, [settings.alarmMinute, isEditingMinute]);
-
-  const commitHour = (raw: string) => {
-    const val = parseInt(raw, 10);
-    const clamped = isNaN(val) ? settings.alarmHour : Math.max(0, Math.min(23, val));
-    updateSettings({ alarmHour: clamped });
-    setHourInput(String(clamped).padStart(2, '0'));
-  };
-
-  const commitMinute = (raw: string) => {
-    const val = parseInt(raw, 10);
-    const clamped = isNaN(val) ? settings.alarmMinute : Math.max(0, Math.min(59, val));
-    updateSettings({ alarmMinute: clamped });
-    setMinuteInput(String(clamped).padStart(2, '0'));
-  };
 
   const toggleDay = (dayIndex: number) => {
     if (settings.isArmed) return;
@@ -69,37 +52,40 @@ export default function AlarmScreen() {
     updateSettings({ repeatDays: newDays });
   };
 
-  const adjustHour = (delta: number) => {
-    if (settings.isArmed) return;
-    let newHour = settings.alarmHour + delta;
-    if (newHour > 23) newHour = 0;
-    if (newHour < 0) newHour = 23;
-    updateSettings({ alarmHour: newHour });
-  };
-
-  const adjustMinute = (delta: number) => {
-    if (settings.isArmed) return;
-    let newMinute = settings.alarmMinute + delta;
-    let newHour = settings.alarmHour;
-    if (newMinute > 59) {
-      newMinute = 0;
-      newHour += 1;
-      if (newHour > 23) newHour = 0;
-    } else if (newMinute < 0) {
-      newMinute = 59;
-      newHour -= 1;
-      if (newHour < 0) newHour = 23;
-    }
-    updateSettings({ alarmHour: newHour, alarmMinute: newMinute });
-  };
 
   const toggleArmed = () => {
     if (settings.repeatDays.length === 0 && !settings.isArmed) return;
     updateSettings({ isArmed: !settings.isArmed });
   };
 
+
   const noDaysSelected = settings.repeatDays.length === 0;
   const isArmButtonDisabled = noDaysSelected && !settings.isArmed;
+
+
+  const armGradientColors = settings.isArmed
+    ? [SEMANTIC_COLORS.error, SEMANTIC_COLORS.error]
+    : isArmButtonDisabled
+    ? ['#333333', '#333333']
+    : [theme.accent, theme.accentSecondary ?? theme.accent];
+
+
+  const armIconTextColor = settings.isArmed || isArmButtonDisabled
+    ? '#FFFFFF'
+    : theme.armButtonTextColor ?? '#FFFFFF';
+
+
+  // Stage 4: tactile press feedback on the primary Arm button
+  const handlePressIn = () => {
+    if (isArmButtonDisabled) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    Animated.timing(buttonScale, { toValue: 0.96, duration: 80, useNativeDriver: true }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(buttonScale, { toValue: 1, friction: 5, tension: 200, useNativeDriver: true }).start();
+  };
+
 
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -123,11 +109,20 @@ export default function AlarmScreen() {
         </View>
       </LinearGradient>
 
+
       <View style={styles.body}>
         <View style={styles.card}>
           <View style={styles.cardInner}>
             <View style={styles.cardHeaderRow}>
-              <View style={[styles.iconBadge, { backgroundColor: `${theme.accent}26` }]}>
+              <View
+                style={[
+                  styles.iconBadge,
+                  {
+                    backgroundColor: `${theme.accent}26`,
+                    shadowColor: theme.accent,
+                  },
+                ]}
+              >
                 <Ionicons name="alarm" size={18} color={theme.accent} />
               </View>
               <View style={{ flex: 1 }}>
@@ -136,85 +131,63 @@ export default function AlarmScreen() {
               </View>
             </View>
 
-            <View style={styles.timeControlsContainer}>
-              <View style={styles.timeSection}>
-                <Pressable
-                  style={({ pressed }) => [styles.adjustButton, pressed && styles.pressed]}
-                  onPress={() => adjustHour(1)}
-                  accessibilityLabel="Increase hour"
-                  disabled={settings.isArmed}
-                >
-                  <Ionicons name="chevron-up" size={18} color={theme.accent} />
-                </Pressable>
-                <TextInput
-                  style={styles.timeInput}
-                  value={isEditingHour ? hourInput : String(settings.alarmHour).padStart(2, '0')}
-                  editable={!settings.isArmed}
-                  keyboardType="number-pad"
-                  maxLength={2}
-                  selectTextOnFocus
-                  accessibilityLabel="Alarm hour, type to edit"
-                  onFocus={() => {
-                    setIsEditingHour(true);
-                    setHourInput(String(settings.alarmHour).padStart(2, '0'));
-                  }}
-                  onChangeText={(text) => setHourInput(text.replace(/\D/g, '').slice(0, 2))}
-                  onBlur={() => {
-                    setIsEditingHour(false);
-                    commitHour(hourInput);
-                  }}
+
+            {/* Stage 2: single ambient optical bloom behind both wheels */}
+            <View style={styles.wheelArenaContainer}>
+              <View
+                pointerEvents="none"
+                style={[styles.ambientGlowBackdrop, { shadowColor: theme.accent }]}
+              >
+                <LinearGradient
+                  colors={[`${theme.accent}38`, `${theme.accent}14`, 'transparent']}
+                  locations={[0, 0.45, 1]}
+                  style={styles.ambientGlowGradient}
                 />
-                <Pressable
-                  style={({ pressed }) => [styles.adjustButton, pressed && styles.pressed]}
-                  onPress={() => adjustHour(-1)}
-                  accessibilityLabel="Decrease hour"
-                  disabled={settings.isArmed}
-                >
-                  <Ionicons name="chevron-down" size={18} color={theme.accent} />
-                </Pressable>
-                <Text style={styles.timeSectionLabel}>HOUR</Text>
               </View>
 
-              <Text style={styles.timeColon}>:</Text>
+              <View style={styles.wheelRow}>
+                <View style={styles.wheelColumn}>
+                  <WatchRotaryWheel
+                    value={settings.alarmHour}
+                    min={0}
+                    max={23}
+                    onChange={(h) => updateSettings({ alarmHour: h })}
+                    side="left"
+                    disabled={settings.isArmed}
+                    accentColor={theme.accent}
+                    accentSecondaryColor={theme.accentSecondary}
+                    textColor={theme.text}
+                    textSecondaryColor={theme.textSecondary}
+                    backgroundColor={theme.background}
+                    cardColor={theme.cardAlt}
+                  />
+                  <Text style={styles.wheelLabel}>HOUR</Text>
+                </View>
 
-              <View style={styles.timeSection}>
-                <Pressable
-                  style={({ pressed }) => [styles.adjustButton, pressed && styles.pressed]}
-                  onPress={() => adjustMinute(1)}
-                  accessibilityLabel="Increase minute"
-                  disabled={settings.isArmed}
-                >
-                  <Ionicons name="chevron-up" size={18} color={theme.accent} />
-                </Pressable>
-                <TextInput
-                  style={styles.timeInput}
-                  value={isEditingMinute ? minuteInput : String(settings.alarmMinute).padStart(2, '0')}
-                  editable={!settings.isArmed}
-                  keyboardType="number-pad"
-                  maxLength={2}
-                  selectTextOnFocus
-                  accessibilityLabel="Alarm minute, type to edit"
-                  onFocus={() => {
-                    setIsEditingMinute(true);
-                    setMinuteInput(String(settings.alarmMinute).padStart(2, '0'));
-                  }}
-                  onChangeText={(text) => setMinuteInput(text.replace(/\D/g, '').slice(0, 2))}
-                  onBlur={() => {
-                    setIsEditingMinute(false);
-                    commitMinute(minuteInput);
-                  }}
-                />
-                <Pressable
-                  style={({ pressed }) => [styles.adjustButton, pressed && styles.pressed]}
-                  onPress={() => adjustMinute(-1)}
-                  accessibilityLabel="Decrease minute"
-                  disabled={settings.isArmed}
-                >
-                  <Ionicons name="chevron-down" size={18} color={theme.accent} />
-                </Pressable>
-                <Text style={styles.timeSectionLabel}>MIN</Text>
+
+                <View style={styles.bridgeSpacer} />
+
+
+                <View style={styles.wheelColumn}>
+                  <WatchRotaryWheel
+                    value={settings.alarmMinute}
+                    min={0}
+                    max={59}
+                    onChange={(m) => updateSettings({ alarmMinute: m })}
+                    side="right"
+                    disabled={settings.isArmed}
+                    accentColor={theme.accent}
+                    accentSecondaryColor={theme.accentSecondary}
+                    textColor={theme.text}
+                    textSecondaryColor={theme.textSecondary}
+                    backgroundColor={theme.background}
+                    cardColor={theme.cardAlt}
+                  />
+                  <Text style={styles.wheelLabel}>MIN</Text>
+                </View>
               </View>
             </View>
+
 
             <View style={styles.segmentedContainer}>
               {DAYS.map((day, index) => {
@@ -240,6 +213,7 @@ export default function AlarmScreen() {
               })}
             </View>
 
+
             {noDaysSelected && (
               <View style={styles.warningRow}>
                 <Ionicons name="alert-circle" size={14} color={SEMANTIC_COLORS.warning} />
@@ -249,35 +223,38 @@ export default function AlarmScreen() {
           </View>
         </View>
 
-        <Pressable
-          style={({ pressed }) => [
-            styles.fab,
-            {
-              backgroundColor: settings.isArmed
-                ? SEMANTIC_COLORS.error
-                : isArmButtonDisabled
-                ? '#333333'
-                : theme.accent,
-            },
-            isArmButtonDisabled && styles.fabDisabled,
-            pressed && !isArmButtonDisabled && styles.fabPressed,
-          ]}
-          onPress={toggleArmed}
-          disabled={isArmButtonDisabled}
-          accessibilityLabel={settings.isArmed ? 'Cancel Alarm' : 'Arm Alarm'}
-          accessibilityHint={
-            isArmButtonDisabled ? 'Select at least one repeat day before arming the alarm.' : undefined
-          }
-        >
-          <Ionicons
-            name={settings.isArmed ? 'close-circle' : 'shield-checkmark'}
-            size={22}
-            color="#FFFFFF"
-          />
-          <Text style={styles.fabText}>
-            {settings.isArmed ? 'Cancel alarm' : 'Arm alarm'}
-          </Text>
-        </Pressable>
+
+        {/* Stage 4: tactile press-scale wrapper on the primary Arm button */}
+        <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+          <LinearGradient
+            colors={armGradientColors as [string, string]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[styles.fabGradientWrap, isArmButtonDisabled && styles.fabDisabled]}
+          >
+            <Pressable
+              style={styles.fab}
+              onPressIn={handlePressIn}
+              onPressOut={handlePressOut}
+              onPress={toggleArmed}
+              disabled={isArmButtonDisabled}
+              accessibilityLabel={settings.isArmed ? 'Cancel Alarm' : 'Arm Alarm'}
+              accessibilityHint={
+                isArmButtonDisabled ? 'Select at least one repeat day before arming the alarm.' : undefined
+              }
+            >
+              <Ionicons
+                name={settings.isArmed ? 'close-circle' : 'shield-checkmark'}
+                size={22}
+                color={armIconTextColor}
+              />
+              <Text style={[styles.fabText, { color: armIconTextColor }]}>
+                {settings.isArmed ? 'Cancel alarm' : 'Arm alarm'}
+              </Text>
+            </Pressable>
+          </LinearGradient>
+        </Animated.View>
+
 
         {settings.isArmed && (
           <>
@@ -299,10 +276,12 @@ export default function AlarmScreen() {
   );
 }
 
+
 function createStyles(theme: ThemeConfig) {
   return StyleSheet.create({
     container: { flexGrow: 1, backgroundColor: theme.background },
     body: { paddingHorizontal: 16, paddingTop: 20 },
+
 
     hero: { paddingBottom: 28, paddingHorizontal: 24, alignItems: 'center', borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
     heroLabel: {
@@ -319,23 +298,50 @@ function createStyles(theme: ThemeConfig) {
     },
     heroPillText: { color: theme.text, fontSize: 12, fontWeight: '700' },
 
+
     card: { backgroundColor: theme.card, borderRadius: SHAPE.xl, marginBottom: 20, overflow: 'hidden',
       shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 5, elevation: 3 },
     cardInner: { flex: 1, padding: 20 },
     cardHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-    iconBadge: { width: 36, height: 36, borderRadius: SHAPE.full, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    iconBadge: {
+      width: 36, height: 36, borderRadius: SHAPE.full, alignItems: 'center', justifyContent: 'center', marginRight: 12,
+      shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 8, elevation: 4,
+    },
     cardTitle: { fontSize: 19, fontWeight: '800', color: theme.text, fontFamily: theme.fontFamily },
     cardCaption: { fontSize: 12, color: theme.textSecondary, marginTop: 1 },
 
-    timeControlsContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 22, gap: 4 },
-    timeSection: { alignItems: 'center', gap: 2 },
-    adjustButton: { width: 34, height: 26, borderRadius: SHAPE.md, backgroundColor: theme.background, alignItems: 'center', justifyContent: 'center' },
-    timeInput: {
-      fontSize: 44, fontWeight: '800', color: theme.text, width: 70, textAlign: 'center',
-      fontFamily: theme.fontFamily, paddingVertical: 2,
+
+    wheelArenaContainer: {
+      position: 'relative',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 12,
+      marginBottom: 16,
     },
-    timeSectionLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1, color: theme.textSecondary, marginTop: 2 },
-    timeColon: { fontSize: 40, fontWeight: '800', color: theme.textSecondary, marginHorizontal: 2, alignSelf: 'center' },
+    ambientGlowBackdrop: {
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      width: 260,
+      height: 140,
+      marginLeft: -130,
+      marginTop: -70,
+      borderRadius: 70,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.8,
+      shadowRadius: 40,
+      elevation: 12,
+    },
+    ambientGlowGradient: {
+      width: '100%',
+      height: '100%',
+      borderRadius: 70,
+    },
+    wheelRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', zIndex: 2 },
+    bridgeSpacer: { width: 10 },
+    wheelColumn: { alignItems: 'center', gap: 6 },
+    wheelLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1, color: theme.textSecondary },
+
 
     segmentedContainer: { flexDirection: 'row', borderRadius: SHAPE.full, borderWidth: 1, borderColor: theme.border, overflow: 'hidden' },
     segment: { flex: 1, height: 42, alignItems: 'center', justifyContent: 'center', borderLeftWidth: 1, borderLeftColor: theme.border },
@@ -345,25 +351,33 @@ function createStyles(theme: ThemeConfig) {
     segmentText: { color: theme.textSecondary, fontWeight: '700', fontSize: 13 },
     segmentTextSelected: { color: theme.accentText },
 
+
     warningRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14, justifyContent: 'center' },
     warningText: { color: SEMANTIC_COLORS.warning, fontWeight: '700', fontSize: 12 },
 
+
+    fabGradientWrap: {
+      borderRadius: SHAPE.full,
+      marginBottom: 12,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.45,
+      shadowRadius: 14,
+      elevation: 6,
+    },
     fab: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-      borderRadius: SHAPE.full, paddingVertical: 17, marginBottom: 12,
-      shadowColor: theme.accent, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 5,
+      borderRadius: SHAPE.full, paddingVertical: 17,
     },
     fabDisabled: {
-      opacity: 0.6,
       shadowOpacity: 0,
       elevation: 0,
+      opacity: 0.6,
     },
-    fabPressed: { opacity: 0.85, transform: [{ scale: 0.99 }] },
     fabText: {
-      color: '#FFFFFF',
       fontSize: 16,
       fontWeight: '800',
     },
+
 
     tonalButton: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -371,6 +385,7 @@ function createStyles(theme: ThemeConfig) {
     },
     tonalButtonText: { color: theme.accent, fontSize: 14, fontWeight: '700' },
     previewHint: { color: theme.textSecondary, fontSize: 12, textAlign: 'center', marginBottom: 24, lineHeight: 18 },
+
 
     pressed: { opacity: 0.7 },
   });
