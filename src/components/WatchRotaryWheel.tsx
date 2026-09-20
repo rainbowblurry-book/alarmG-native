@@ -189,8 +189,8 @@ export default function WatchRotaryWheel({
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => !disabled,
-      onMoveShouldSetPanResponder: () => !disabled,
+      onStartShouldSetPanResponder: () => !disabledRef.current,
+      onMoveShouldSetPanResponder: () => !disabledRef.current,
       onPanResponderGrant: (evt) => {
         if (animFrameIdRef.current) {
           cancelAnimationFrame(animFrameIdRef.current);
