@@ -187,6 +187,12 @@ export default function WatchRotaryWheel({
     }
   }, [checkTickCrossing, normalizeIndex, onChange, min, fireLockHaptic]);
 
+  const disabledRef = useRef(disabled);
+
+  useEffect(() => {
+    disabledRef.current = disabled;
+  }, [disabled]);
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => !disabledRef.current,
