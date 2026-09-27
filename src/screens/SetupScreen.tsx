@@ -175,7 +175,7 @@ export default function SetupScreen() {
               accessibilityLabel="Scan Wake-up Item Barcode"
             >
               {isGlass && (
-                <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFillObject} />
+                <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFill} />
               )}
               <Ionicons name="scan-outline" size={16} color={theme.accentText} />
               <Text style={[styles.actionButtonText, { color: theme.accentText }]}>
@@ -233,7 +233,7 @@ export default function SetupScreen() {
               accessibilityLabel="Save snooze PIN"
             >
               {isGlass && !pinButtonDisabled && (
-                <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFillObject} />
+                <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFill} />
               )}
               <Ionicons name="save-outline" size={16} color={theme.accentText} />
               <Text style={[styles.actionButtonText, { color: theme.accentText }]}>Save PIN</Text>
@@ -317,7 +317,7 @@ export default function SetupScreen() {
                 accessibilityLabel="Open app settings"
               >
                 {isGlass && (
-                  <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFillObject} />
+                  <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFill} />
                 )}
                 <Text style={[styles.actionButtonText, { color: theme.accentText }]}>Open Settings</Text>
               </Pressable>
@@ -349,7 +349,7 @@ export default function SetupScreen() {
                   accessibilityLabel="Save manual barcode"
                 >
                   {isGlass && !manualBarcodeDisabled && (
-                    <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFillObject} />
+                    <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFill} />
                   )}
                   <Text style={[styles.actionButtonText, { color: theme.accentText }]}>Save Manual Barcode</Text>
                 </Pressable>

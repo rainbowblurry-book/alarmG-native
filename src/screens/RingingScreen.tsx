@@ -229,7 +229,7 @@ export default function RingingScreen() {
             <View style={styles.topSection}>
               <View style={[styles.statusPill, isGlass && styles.statusPillTransparent]}>
                 {isGlass && (
-                  <BlurView intensity={60} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFillObject} />
+                  <BlurView intensity={60} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
                 )}
                 <View style={styles.statusDot} />
                 <Text style={styles.statusPillText}>Alarm active</Text>
@@ -245,7 +245,7 @@ export default function RingingScreen() {
               {settings.movementEnabled && (
                 <View style={[styles.card, isGlass && styles.cardTransparent]}>
                   {isGlass && (
-                    <BlurView intensity={60} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFillObject} />
+                    <BlurView intensity={60} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
                   )}
                   <View style={styles.cardHeaderRow}>
                     <View style={[styles.iconBadge, { backgroundColor: `${theme.accent}30` }]}>
@@ -306,7 +306,7 @@ export default function RingingScreen() {
                 accessibilityLabel="Scan to Disarm"
               >
                 {isGlass && isMovementComplete && (
-                  <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFillObject} />
+                  <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFill} />
                 )}
                 <Ionicons name="scan" size={18} color={theme.accentText} />
                 <Text style={styles.scanButtonText}>
@@ -324,7 +324,7 @@ export default function RingingScreen() {
                 accessibilityLabel="Snooze with PIN"
               >
                 {isGlass && (
-                  <BlurView intensity={60} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFillObject} />
+                  <BlurView intensity={60} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
                 )}
                 <Ionicons name="moon-outline" size={16} color={theme.accent} />
                 <Text style={styles.snoozeButtonText}>Snooze with PIN</Text>
@@ -354,7 +354,7 @@ export default function RingingScreen() {
             <View style={styles.topSection}>
               <View style={[styles.statusPill, styles.statusPillSnooze, isGlass && styles.statusPillTransparent]}>
                 {isGlass && (
-                  <BlurView intensity={60} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFillObject} />
+                  <BlurView intensity={60} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
                 )}
                 <Ionicons name="moon" size={13} color={theme.accent} />
                 <Text style={styles.statusPillText}>Snoozed - #{wakeFlow.snoozeCount}</Text>
@@ -390,7 +390,7 @@ export default function RingingScreen() {
                 accessibilityLabel="Scan to Disarm Now"
               >
                 {isGlass && (
-                  <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFillObject} />
+                  <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFill} />
                 )}
                 <Ionicons name="scan" size={18} color={theme.accentText} />
                 <Text style={styles.scanButtonText}>Scan to disarm now</Text>
@@ -462,7 +462,7 @@ export default function RingingScreen() {
           <View style={styles.keypadOverlay}>
             <View style={[styles.keypadContainer, isGlass && styles.keypadContainerTransparent]}>
               {isGlass && (
-                <BlurView intensity={70} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFillObject} />
+                <BlurView intensity={70} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
               )}
               <Text style={styles.keypadTitle}>Snooze PIN</Text>
 

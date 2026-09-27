@@ -1,5 +1,6 @@
 export type ThemeId = 'minimal' | 'amber' | 'neon' | 'blossom' | 'obsidian' | 'watch';
 
+export type GradientColors = readonly [string, string, ...string[]];
 
 export interface ThemeConfig {
   id: ThemeId;
@@ -16,18 +17,16 @@ export interface ThemeConfig {
   accentSecondary?: string;
   accentText: string;
   armButtonTextColor?: string;
-  ringingGradient: string[];
-  buttonGradient: string[];
+  ringingGradient: GradientColors;
+  buttonGradient: GradientColors;
   glassEffect?: boolean;
 }
-
 
 export const SEMANTIC_COLORS = {
   warning: '#F59E0B',
   error: '#F43F5E',
   success: '#10B981',
 };
-
 
 export const THEMES: Record<ThemeId, ThemeConfig> = {
   minimal: {
@@ -133,7 +132,6 @@ export const THEMES: Record<ThemeId, ThemeConfig> = {
   },
 };
 
-
 export const THEME_LIST: ThemeConfig[] = [
   THEMES.minimal,
   THEMES.amber,
@@ -142,6 +140,5 @@ export const THEME_LIST: ThemeConfig[] = [
   THEMES.obsidian,
   THEMES.watch,
 ];
-
 
 export const DEFAULT_THEME_ID: ThemeId = 'minimal';
