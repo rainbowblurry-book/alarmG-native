@@ -119,18 +119,27 @@ export default function SettingsScreen() {
             </View>
             <Text style={[styles.cardCaption, { marginBottom: 12 }]}>Remove before release</Text>
             {settings.devUnlocked ? (
-              <View style={styles.settingRow}>
-                <View style={{ flex: 1, paddingRight: 12 }}>
-                  <Text style={styles.devLabel}>Simulate Pro</Text>
-                  <Text style={styles.cardCaption}>Preview locally. Not persisted, not real billing.</Text>
+              <>
+                <View style={styles.settingRow}>
+                  <View style={{ flex: 1, paddingRight: 12 }}>
+                    <Text style={styles.devLabel}>Simulate Pro</Text>
+                    <Text style={styles.cardCaption}>Preview locally. Not persisted, not real billing.</Text>
+                  </View>
+                  <Switch
+                    value={devSimulatePro}
+                    onValueChange={setDevSimulatePro}
+                    trackColor={{ false: theme.border, true: theme.accent }}
+                    thumbColor="#ffffff"
+                  />
                 </View>
-                <Switch
-                  value={devSimulatePro}
-                  onValueChange={setDevSimulatePro}
-                  trackColor={{ false: theme.border, true: theme.accent }}
-                  thumbColor="#ffffff"
-                />
-              </View>
+                <Pressable
+                  onPress={() => updateSettings({ devUnlocked: false })}
+                  accessibilityLabel="Lock developer testing"
+                  style={{ marginTop: 8, alignSelf: 'flex-start' }}
+                >
+                  <Text style={{ color: theme.textSecondary, fontSize: 12, textDecorationLine: 'underline' }}>Lock</Text>
+                </Pressable>
+              </>
             ) : (
               <View>
                 <Text style={styles.devLabel}>Enter code to unlock</Text>
