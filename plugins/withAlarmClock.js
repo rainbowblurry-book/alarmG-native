@@ -10,14 +10,13 @@ const path = require('path');
 /**
  * withAlarmClock — real native alarm for ClockGuard.
  *
- * - AlarmManager.setAlarmClock() schedules the exact wake time (system alarm icon,
- *   wakes the device from Doze).
- * - ClockGuardAlarmReceiver fires at that time, posts a CATEGORY_ALARM notification
- *   with setFullScreenIntent() so MainActivity opens BY ITSELF over the lock screen,
- *   then schedules the next repeat day natively (no need to open the app).
+ * - AlarmManager.setAlarmClock() schedules the exact wake time.
+ * - ClockGuardAlarmReceiver fires, posts a CATEGORY_ALARM notification with
+ *   setFullScreenIntent() so MainActivity opens by itself over the lock screen,
+ *   then schedules the next repeat day natively (always, in a finally block).
  * - ClockGuardBootReceiver re-schedules after reboot / app update.
  * - AlarmLaunchHelper turns on showWhenLocked/turnScreenOn when MainActivity is
- *   started by the alarm, before JS has even loaded.
+ *   started by the alarm, before JS has loaded.
  * - JS module name: "ClockGuardAlarm" (see src/native/alarmClock.ts).
  *
  * Depends on withLockScreenBypass.js (uses MainActivity.currentActivity companion).
@@ -47,6 +46,7 @@ import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.util.Log
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
 import com.facebook.react.ReactPackage
@@ -260,19 +260,34 @@ object AlarmLaunchHelper {
 
 class ClockGuardAlarmReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
-    val s = ClockGuardAlarmStore.load(context) ?: return
-    ClockGuardAlarmStore.markPendingRing(context)
-    ClockGuardAlarmNotifier.show(
-      context,
-      s.title,
-      if (s.body.isNotEmpty()) s.body else "Complete your wake-up mission to disarm."
-    )
-    // If the app is already alive in the background, make it able to show over the lock screen now.
-    MainActivity.currentActivity?.get()?.let { a ->
-      a.runOnUiThread { AlarmLaunchHelper.apply(a) }
+    val s = try {
+      ClockGuardAlarmStore.load(context)
+    } catch (e: Exception) {
+      Log.e("ClockGuard", "Failed to load alarm schedule", e)
+      null
+    } ?: return
+
+    try {
+      ClockGuardAlarmStore.markPendingRing(context)
+      ClockGuardAlarmNotifier.show(
+        context,
+        s.title,
+        if (s.body.isNotEmpty()) s.body else "Complete your wake-up mission to disarm."
+      )
+      // If the app is already alive in the background, let it show over the lock screen now.
+      MainActivity.currentActivity?.get()?.let { a ->
+        a.runOnUiThread { AlarmLaunchHelper.apply(a) }
+      }
+    } catch (e: Exception) {
+      Log.e("ClockGuard", "Alarm receiver failed while ringing", e)
+    } finally {
+      // Always schedule the next repeat day, even if the notification step failed.
+      try {
+        ClockGuardAlarmScheduling.scheduleNext(context)
+      } catch (e: Exception) {
+        Log.e("ClockGuard", "Failed to schedule next alarm", e)
+      }
     }
-    // Schedule the next repeat day natively so repeats work without opening the app.
-    ClockGuardAlarmScheduling.scheduleNext(context)
   }
 }
 
@@ -280,7 +295,11 @@ class ClockGuardBootReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
     val action = intent.action ?: return
     if (action == Intent.ACTION_BOOT_COMPLETED || action == Intent.ACTION_MY_PACKAGE_REPLACED) {
-      ClockGuardAlarmScheduling.scheduleNext(context)
+      try {
+        ClockGuardAlarmScheduling.scheduleNext(context)
+      } catch (e: Exception) {
+        Log.e("ClockGuard", "Failed to reschedule after boot/update", e)
+      }
     }
   }
 }

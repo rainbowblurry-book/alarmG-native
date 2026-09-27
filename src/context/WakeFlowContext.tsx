@@ -32,6 +32,7 @@ type WakeFlowContextType = {
   wakeFlow: WakeFlowState;
   startPreview: () => void;
   dismissWake: () => void;
+  exitPreview: () => void;
   incrementMovement: (max: number) => void;
   startSnooze: () => void;
   decrementSnooze: () => void;
@@ -72,19 +73,19 @@ export function WakeFlowProvider({ children }: { children: ReactNode }) {
   };
 
 
-  // Disarm (correct barcode) or dev Exit Preview: back to idle AND back to
-  // "ready to arm". Setting isArmed=false makes App.tsx cancel the native alarm
-  // (including the next repeat day the receiver already scheduled), so the user
+  // Real disarm (correct barcode): back to idle AND back to "ready to arm".
+  // Setting isArmed=false makes App.tsx cancel the native alarm, so the user
   // arms again each night, like a one-shot alarm.
   const dismissWake = () => {
-    setWakeFlow({
-      status: 'idle',
-      movementProgress: 0,
-      snoozeSecondsRemaining: 0,
-      snoozeCount: 0,
-      currentSnoozeDurationSeconds: BASE_SNOOZE_SECONDS,
-    });
+    setWakeFlow(DEFAULT_WAKE_FLOW);
     updateSettings({ isArmed: false });
+  };
+
+
+  // Dev-only "Exit Preview (Testing Only)": back to idle WITHOUT touching
+  // isArmed, so a real armed alarm stays scheduled and still rings on time.
+  const exitPreview = () => {
+    setWakeFlow(DEFAULT_WAKE_FLOW);
   };
 
 
@@ -148,6 +149,7 @@ export function WakeFlowProvider({ children }: { children: ReactNode }) {
         wakeFlow,
         startPreview,
         dismissWake,
+        exitPreview,
         incrementMovement,
         startSnooze,
         decrementSnooze,
