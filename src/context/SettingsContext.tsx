@@ -19,6 +19,7 @@ export type AlarmSettings = {
   wallpaperBlur: number;
   customToneUri: string | null;
   customToneName: string | null;
+  devUnlocked: boolean;
 };
 
 const DEFAULT_SETTINGS: AlarmSettings = {
@@ -37,6 +38,7 @@ const DEFAULT_SETTINGS: AlarmSettings = {
   wallpaperBlur: 40,
   customToneUri: null,
   customToneName: null,
+  devUnlocked: false,
 };
 
 function isValidSettings(data: any): data is Partial<AlarmSettings> {
@@ -75,6 +77,7 @@ function isValidSettings(data: any): data is Partial<AlarmSettings> {
   }
   if ('customToneUri' in data && data.customToneUri !== null && typeof data.customToneUri !== 'string') return false;
   if ('customToneName' in data && data.customToneName !== null && typeof data.customToneName !== 'string') return false;
+  if ('devUnlocked' in data && typeof data.devUnlocked !== 'boolean') return false;
 
   return true;
 }
