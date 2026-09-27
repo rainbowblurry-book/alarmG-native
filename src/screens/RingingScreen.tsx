@@ -47,7 +47,9 @@ export default function RingingScreen() {
   const lastMovementTimeRef = useRef<number>(0);
   const progressRef = useRef(wakeFlow.movementProgress);
 
-  const player = useAudioPlayer(require('../../assets/alarm-tone.mp3'));
+  const player = useAudioPlayer(
+    settings.customToneUri ? { uri: settings.customToneUri } : require('../../assets/alarm-tone.mp3')
+  );
 
   useEffect(() => {
     progressRef.current = wakeFlow.movementProgress;

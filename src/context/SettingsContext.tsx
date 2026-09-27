@@ -14,6 +14,11 @@ export type AlarmSettings = {
   movementEnabled: boolean;
   movementTarget: number;
   crueltyModeEnabled: boolean;
+  wallpaperUri: string | null;
+  wallpaperOpacity: number;
+  wallpaperBlur: number;
+  customToneUri: string | null;
+  customToneName: string | null;
 };
 
 const DEFAULT_SETTINGS: AlarmSettings = {
@@ -27,6 +32,11 @@ const DEFAULT_SETTINGS: AlarmSettings = {
   movementEnabled: true,
   movementTarget: 15,
   crueltyModeEnabled: false,
+  wallpaperUri: null,
+  wallpaperOpacity: 0.35,
+  wallpaperBlur: 40,
+  customToneUri: null,
+  customToneName: null,
 };
 
 function isValidSettings(data: any): data is Partial<AlarmSettings> {
@@ -55,6 +65,16 @@ function isValidSettings(data: any): data is Partial<AlarmSettings> {
     if (typeof data.movementTarget !== 'number' || !Number.isFinite(data.movementTarget) || !Number.isInteger(data.movementTarget) || data.movementTarget <= 0) return false;
   }
   if ('crueltyModeEnabled' in data && typeof data.crueltyModeEnabled !== 'boolean') return false;
+
+  if ('wallpaperUri' in data && data.wallpaperUri !== null && typeof data.wallpaperUri !== 'string') return false;
+  if ('wallpaperOpacity' in data) {
+    if (typeof data.wallpaperOpacity !== 'number' || !Number.isFinite(data.wallpaperOpacity) || data.wallpaperOpacity < 0 || data.wallpaperOpacity > 1) return false;
+  }
+  if ('wallpaperBlur' in data) {
+    if (typeof data.wallpaperBlur !== 'number' || !Number.isFinite(data.wallpaperBlur) || data.wallpaperBlur < 0 || data.wallpaperBlur > 100) return false;
+  }
+  if ('customToneUri' in data && data.customToneUri !== null && typeof data.customToneUri !== 'string') return false;
+  if ('customToneName' in data && data.customToneName !== null && typeof data.customToneName !== 'string') return false;
 
   return true;
 }
@@ -126,7 +146,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const loadingTheme = THEMES[DEFAULT_THEME_ID];
     return (
       <View style={[styles.loadingContainer, { backgroundColor: loadingTheme.background }]}>
-        <Text style={[styles.loadingText, { color: loadingTheme.textSecondary }]}>Loading settings...</Text>
+        <Text style={[styles.loadingText, { color: loadingTheme.text }]}>Loading settings...</Text>
       </View>
     );
   }

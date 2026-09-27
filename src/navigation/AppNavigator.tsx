@@ -5,11 +5,13 @@ import AlarmScreen from '../screens/AlarmScreen';
 import SetupScreen from '../screens/SetupScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import { useTheme } from '../context/ThemeContext';
+import { useSettings } from '../context/SettingsContext';
 
 const Tab = createBottomTabNavigator();
 
 export default function AppNavigator() {
   const { theme } = useTheme();
+  const { settings } = useSettings();
 
   return (
     <Tab.Navigator
@@ -41,8 +43,24 @@ export default function AppNavigator() {
       })}
     >
       <Tab.Screen name="Alarm" component={AlarmScreen} />
-      <Tab.Screen name="Setup" component={SetupScreen} />
-      <Tab.Screen name="Settings" component={SettingsScreen} />
+      <Tab.Screen
+        name="Setup"
+        component={SetupScreen}
+        listeners={{
+          tabPress: (e) => {
+            if (settings.isArmed) e.preventDefault();
+          },
+        }}
+      />
+      <Tab.Screen
+        name="Settings"
+        component={SettingsScreen}
+        listeners={{
+          tabPress: (e) => {
+            if (settings.isArmed) e.preventDefault();
+          },
+        }}
+      />
     </Tab.Navigator>
   );
 }
