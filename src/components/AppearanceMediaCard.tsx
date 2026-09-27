@@ -1,52 +1,25 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, Alert } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useSettings } from '../context/SettingsContext';
 import { useTheme } from '../context/ThemeContext';
 import { ThemeConfig, SEMANTIC_COLORS } from '../theme/themes';
 
 /**
- * Self-contained Settings-screen card: wallpaper photo picker (with
- * visibility + blur adjusters) and custom alarm-tone picker. Drop
- * <AppearanceMediaCard /> anywhere inside SettingsScreen's ScrollView.
+ * Self-contained Settings-screen card: custom alarm-tone picker.
+ * Drop <AppearanceMediaCard /> anywhere inside SettingsScreen's ScrollView.
+ *
+ * NOTE: the wallpaper photo picker was built (SettingsContext fields +
+ * WallpaperBackground.tsx component both still exist) but was never wired
+ * to actually render behind any screen, so picking a photo appeared to do
+ * nothing. Disabled here for a stable ship; revisit once WallpaperBackground
+ * is actually mounted around a screen's content.
  */
 export default function AppearanceMediaCard() {
   const { settings, updateSettings } = useSettings();
   const { theme } = useTheme();
   const styles = createStyles(theme);
-
-  const pickWallpaper = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Permission needed', 'Photo library access is needed to set a wallpaper.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets?.[0]?.uri) {
-      updateSettings({ wallpaperUri: result.assets[0].uri });
-    }
-  };
-
-  const clearWallpaper = () => updateSettings({ wallpaperUri: null });
-
-  const adjustOpacity = (delta: number) => {
-    let next = Math.round((settings.wallpaperOpacity + delta) * 100) / 100;
-    if (next < 0.05) next = 0.05;
-    if (next > 0.9) next = 0.9;
-    updateSettings({ wallpaperOpacity: next });
-  };
-
-  const adjustBlur = (delta: number) => {
-    let next = settings.wallpaperBlur + delta;
-    if (next < 0) next = 0;
-    if (next > 100) next = 100;
-    updateSettings({ wallpaperBlur: next });
-  };
 
   const pickTone = async () => {
     const result = await DocumentPicker.getDocumentAsync({
@@ -63,65 +36,6 @@ export default function AppearanceMediaCard() {
 
   return (
     <View style={styles.card}>
-      <View style={styles.cardInner}>
-        <View style={styles.cardHeaderRow}>
-          <View style={[styles.iconBadge, { backgroundColor: `${theme.accent}22` }]}>
-            <Ionicons name="image" size={18} color={theme.accent} />
-          </View>
-          <View>
-            <Text style={styles.cardTitle}>Wallpaper</Text>
-            <Text style={styles.cardCaption}>Custom photo behind every screen</Text>
-          </View>
-        </View>
-
-        <View style={styles.rowBetween}>
-          <Text style={styles.settingLabel}>
-            {settings.wallpaperUri ? 'Custom photo set' : 'Using theme background'}
-          </Text>
-          <Pressable
-            style={({ pressed }) => [styles.pillButton, pressed && styles.pressed]}
-            onPress={pickWallpaper}
-            accessibilityLabel="Choose wallpaper photo"
-          >
-            <Text style={[styles.pillButtonText, { color: theme.accent }]}>
-              {settings.wallpaperUri ? 'Change' : 'Choose photo'}
-            </Text>
-          </Pressable>
-        </View>
-
-        {settings.wallpaperUri && (
-          <>
-            <Pressable onPress={clearWallpaper} accessibilityLabel="Remove wallpaper">
-              <Text style={styles.clearLink}>Remove wallpaper</Text>
-            </Pressable>
-
-            <View style={styles.divider} />
-
-            <Text style={styles.fieldLabel}>Wallpaper visibility</Text>
-            <View style={styles.adjustRow}>
-              <Pressable style={({ pressed }) => [styles.adjustBtn, pressed && styles.pressed]} onPress={() => adjustOpacity(-0.05)} accessibilityLabel="Decrease wallpaper visibility">
-                <Ionicons name="remove" size={18} color={theme.accent} />
-              </Pressable>
-              <Text style={styles.adjustValue}>{Math.round(settings.wallpaperOpacity * 100)}%</Text>
-              <Pressable style={({ pressed }) => [styles.adjustBtn, pressed && styles.pressed]} onPress={() => adjustOpacity(0.05)} accessibilityLabel="Increase wallpaper visibility">
-                <Ionicons name="add" size={18} color={theme.accent} />
-              </Pressable>
-            </View>
-
-            <Text style={styles.fieldLabel}>Blur</Text>
-            <View style={styles.adjustRow}>
-              <Pressable style={({ pressed }) => [styles.adjustBtn, pressed && styles.pressed]} onPress={() => adjustBlur(-10)} accessibilityLabel="Decrease blur">
-                <Ionicons name="remove" size={18} color={theme.accent} />
-              </Pressable>
-              <Text style={styles.adjustValue}>{settings.wallpaperBlur}</Text>
-              <Pressable style={({ pressed }) => [styles.adjustBtn, pressed && styles.pressed]} onPress={() => adjustBlur(10)} accessibilityLabel="Increase blur">
-                <Ionicons name="add" size={18} color={theme.accent} />
-              </Pressable>
-            </View>
-          </>
-        )}
-      </View>
-
       <View style={styles.cardInner}>
         <View style={styles.cardHeaderRow}>
           <View style={[styles.iconBadge, { backgroundColor: `${theme.accent}22` }]}>
@@ -181,11 +95,6 @@ function createStyles(theme: ThemeConfig) {
     pillButton: { backgroundColor: theme.background, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999 },
     pillButtonText: { fontSize: 13, fontWeight: '700' },
     clearLink: { color: SEMANTIC_COLORS.error, fontSize: 12, fontWeight: '700', marginTop: 10 },
-    divider: { height: 1, backgroundColor: theme.border, marginVertical: 14 },
-    fieldLabel: { fontSize: 11, fontWeight: '700', color: theme.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
-    adjustRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 14 },
-    adjustBtn: { width: 36, height: 36, borderRadius: 999, backgroundColor: `${theme.accent}1A`, alignItems: 'center', justifyContent: 'center' },
-    adjustValue: { fontSize: 18, fontWeight: '800', color: theme.text, minWidth: 50, textAlign: 'center' },
     pressed: { opacity: 0.75 },
   });
 }
