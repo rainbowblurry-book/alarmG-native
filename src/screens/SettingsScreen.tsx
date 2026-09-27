@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Switch, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,10 +12,11 @@ const SHAPE = { md: 12, lg: 16, xl: 28, full: 999 };
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const { resetSettings } = useSettings();
+  const { settings, updateSettings, resetSettings } = useSettings();
   const { theme, themeId, themeList, setThemeId } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
   const [devSimulatePro, setDevSimulatePro] = useState(false);
+  const [devCodeInput, setDevCodeInput] = useState('');
 
   const handleReset = () => {
     resetSettings();
@@ -117,19 +118,47 @@ export default function SettingsScreen() {
               <Text style={styles.cardTitle}>Developer testing</Text>
             </View>
             <Text style={[styles.cardCaption, { marginBottom: 12 }]}>Remove before release</Text>
-
-            <View style={styles.settingRow}>
-              <View style={{ flex: 1, paddingRight: 12 }}>
-                <Text style={styles.devLabel}>Simulate Pro</Text>
-                <Text style={styles.cardCaption}>Preview locally. Not persisted, not real billing.</Text>
+            {settings.devUnlocked ? (
+              <View style={styles.settingRow}>
+                <View style={{ flex: 1, paddingRight: 12 }}>
+                  <Text style={styles.devLabel}>Simulate Pro</Text>
+                  <Text style={styles.cardCaption}>Preview locally. Not persisted, not real billing.</Text>
+                </View>
+                <Switch
+                  value={devSimulatePro}
+                  onValueChange={setDevSimulatePro}
+                  trackColor={{ false: theme.border, true: theme.accent }}
+                  thumbColor="#ffffff"
+                />
               </View>
-              <Switch
-                value={devSimulatePro}
-                onValueChange={setDevSimulatePro}
-                trackColor={{ false: theme.border, true: theme.accent }}
-                thumbColor="#ffffff"
-              />
-            </View>
+            ) : (
+              <View>
+                <Text style={styles.devLabel}>Enter code to unlock</Text>
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, alignItems: 'center' }}>
+                  <TextInput
+                    style={{ flex: 1, backgroundColor: theme.background, color: theme.text, padding: 12, borderRadius: 12, fontSize: 14, borderWidth: 1, borderColor: theme.border }}
+                    value={devCodeInput}
+                    onChangeText={setDevCodeInput}
+                    placeholder="Enter code"
+                    placeholderTextColor={theme.textSecondary}
+                    secureTextEntry
+                    autoCapitalize="none"
+                  />
+                  <Pressable
+                    style={{ backgroundColor: theme.accent, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12 }}
+                    onPress={() => {
+                      if (devCodeInput === 'Coderman880') {
+                        updateSettings({ devUnlocked: true });
+                      }
+                      setDevCodeInput('');
+                    }}
+                    accessibilityLabel="Unlock developer testing"
+                  >
+                    <Text style={{ color: theme.accentText, fontWeight: '700' }}>Unlock</Text>
+                  </Pressable>
+                </View>
+              </View>
+            )}
           </View>
         </View>
 

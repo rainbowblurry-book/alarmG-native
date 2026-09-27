@@ -256,7 +256,7 @@ export default function AlarmScreen() {
         </Animated.View>
 
 
-        {settings.isArmed && (
+        {settings.isArmed && settings.devUnlocked && (
           <>
             <Pressable
               style={({ pressed }) => [styles.tonalButton, pressed && styles.pressed]}
