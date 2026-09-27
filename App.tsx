@@ -27,6 +27,7 @@ import {
   ALARM_NOTIFICATION_ID,
 } from './src/services/alarmScheduler';
 import {
+  isNativeAlarmAvailable,
   consumePendingRing,
   canUseFullScreenIntent,
   openFullScreenIntentSettings,
@@ -41,12 +42,21 @@ Notifications.setNotificationHandler({
   }),
 });
 
+// JS-clock fallback trigger. Only used when the native alarm module is NOT
+// available (Expo Go, or a dev client built before withAlarmClock.js was
+// added). When the native module IS available, this is disabled entirely —
+// running both at once let them race: whichever fired first "won" ringing
+// while the other's own notification/pending-flag cleanup never ran, which
+// could leave a stale pending-ring flag that re-triggered ringing on next
+// app open even after a correct disarm.
 function useForegroundAlarmTrigger() {
   const { settings } = useSettings();
   const { wakeFlow, startPreview } = useWakeFlow();
   const lastFiredMinuteRef = useRef<number | null>(null);
 
   useEffect(() => {
+    if (isNativeAlarmAvailable()) return;
+
     const timer = setInterval(() => {
       if (wakeFlow.status !== 'idle') return;
       if (!settings.isArmed) return;
@@ -105,6 +115,7 @@ function useNativeAlarmLaunch() {
   const { wakeFlow, startPreview } = useWakeFlow();
   const statusRef = useRef(wakeFlow.status);
   statusRef.current = wakeFlow.status;
+  const prevStatusRef = useRef(wakeFlow.status);
 
   useEffect(() => {
     const check = async () => {
@@ -126,6 +137,21 @@ function useNativeAlarmLaunch() {
   // alarm notification (stops its system sound) and the pending flag.
   useEffect(() => {
     if (wakeFlow.status === 'ringing') {
+      dismissAlarmNotification();
+      consumePendingRing();
+    }
+  }, [wakeFlow.status]);
+
+  // Fix: sweep the pending-ring flag + notification on every transition back
+  // to idle (disarm), not only when entering ringing. Without this, a flag
+  // set by the native alarm firing a moment after JS already started ringing
+  // (or any other timing edge case) would survive a correct disarm and
+  // re-trigger ringing the next time the app opens within its 15-min window.
+  useEffect(() => {
+    const wasActive = prevStatusRef.current !== 'idle';
+    prevStatusRef.current = wakeFlow.status;
+
+    if (wakeFlow.status === 'idle' && wasActive) {
       dismissAlarmNotification();
       consumePendingRing();
     }
