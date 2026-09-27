@@ -43,12 +43,8 @@ Notifications.setNotificationHandler({
 });
 
 // JS-clock fallback trigger. Only used when the native alarm module is NOT
-// available (Expo Go, or a dev client built before withAlarmClock.js was
-// added). When the native module IS available, this is disabled entirely —
-// running both at once let them race: whichever fired first "won" ringing
-// while the other's own notification/pending-flag cleanup never ran, which
-// could leave a stale pending-ring flag that re-triggered ringing on next
-// app open even after a correct disarm.
+// available (Expo Go / old dev client). With the native module present it is
+// disabled so it can't race the native alarm.
 function useForegroundAlarmTrigger() {
   const { settings } = useSettings();
   const { wakeFlow, startPreview } = useWakeFlow();
@@ -108,9 +104,8 @@ function useBackgroundAlarmScheduler() {
   }, [settings.isArmed, settings.alarmHour, settings.alarmMinute, settings.repeatDays, settings.wakeItemName]);
 }
 
-// Native alarm auto-launch: when ClockGuardAlarmReceiver fires it sets a
-// "pending ring" flag and opens MainActivity via the full-screen intent.
-// Check that flag on launch and every time the app comes to the foreground.
+// Native alarm auto-launch: the receiver sets a "pending ring" flag and opens
+// MainActivity via the full-screen intent. Check it on launch and on foreground.
 function useNativeAlarmLaunch() {
   const { wakeFlow, startPreview } = useWakeFlow();
   const statusRef = useRef(wakeFlow.status);
@@ -133,8 +128,7 @@ function useNativeAlarmLaunch() {
     return () => subscription.remove();
   }, []);
 
-  // Once ringing is on screen, the in-app tone takes over: clear the native
-  // alarm notification (stops its system sound) and the pending flag.
+  // Entering ringing: in-app tone takes over, clear native notification + flag.
   useEffect(() => {
     if (wakeFlow.status === 'ringing') {
       dismissAlarmNotification();
@@ -142,11 +136,8 @@ function useNativeAlarmLaunch() {
     }
   }, [wakeFlow.status]);
 
-  // Fix: sweep the pending-ring flag + notification on every transition back
-  // to idle (disarm), not only when entering ringing. Without this, a flag
-  // set by the native alarm firing a moment after JS already started ringing
-  // (or any other timing edge case) would survive a correct disarm and
-  // re-trigger ringing the next time the app opens within its 15-min window.
+  // Leaving ringing/snoozed back to idle (disarm): sweep flag + notification
+  // again so a late native fire can't re-trigger ringing on next open.
   useEffect(() => {
     const wasActive = prevStatusRef.current !== 'idle';
     prevStatusRef.current = wakeFlow.status;
@@ -158,8 +149,41 @@ function useNativeAlarmLaunch() {
   }, [wakeFlow.status]);
 }
 
+// Wheels default to the CURRENT time whenever the app is opened, brought back
+// to the foreground, or an alarm has just been disarmed — but only while not
+// armed and not ringing, so an armed alarm time is never overwritten.
+function useCurrentTimeWhenIdle() {
+  const { settings, updateSettings } = useSettings();
+  const { wakeFlow } = useWakeFlow();
+  const latestRef = useRef({ isArmed: settings.isArmed, status: wakeFlow.status });
+  latestRef.current = { isArmed: settings.isArmed, status: wakeFlow.status };
+  const prevStatusRef = useRef(wakeFlow.status);
+
+  const setToNow = () => {
+    const { isArmed, status } = latestRef.current;
+    if (isArmed || status !== 'idle') return;
+    const now = new Date();
+    updateSettings({ alarmHour: now.getHours(), alarmMinute: now.getMinutes() });
+  };
+
+  useEffect(() => {
+    setToNow();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') setToNow();
+    });
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    const wasActive = prevStatusRef.current !== 'idle';
+    prevStatusRef.current = wakeFlow.status;
+    if (wakeFlow.status === 'idle' && wasActive) {
+      setToNow();
+    }
+  }, [wakeFlow.status, settings.isArmed]);
+}
+
 // Android 14+: full-screen intents are a special permission the user can turn off.
-// Warn when arming if it is off, since the alarm then cannot open by itself.
 function useFullScreenPermissionCheck() {
   const { settings } = useSettings();
 
@@ -223,6 +247,7 @@ function RootContent() {
   useForegroundAlarmTrigger();
   useBackgroundAlarmScheduler();
   useNativeAlarmLaunch();
+  useCurrentTimeWhenIdle();
   useFullScreenPermissionCheck();
   useNotificationResponseListener();
 

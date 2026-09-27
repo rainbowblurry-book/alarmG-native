@@ -43,19 +43,15 @@ const WakeFlowContext = createContext<WakeFlowContextType | undefined>(undefined
 
 
 export function WakeFlowProvider({ children }: { children: ReactNode }) {
-  const { settings } = useSettings();
+  const { settings, updateSettings } = useSettings();
   const [wakeFlow, setWakeFlow] = useState<WakeFlowState>(DEFAULT_WAKE_FLOW);
   const isFirstBypassSyncRef = useRef(true);
 
-  // LockScreenBypass sync: the native lock-screen-over-keyguard flags must be
-  // ON only while status is 'ringing' or 'snoozed', and OFF the rest of the
-  // time so the app behaves like any normal app when the phone is locked.
-  //
-  // The very first 'idle' run on mount is skipped on purpose: when the native
-  // alarm auto-launches the app, MainActivity has already turned the bypass ON
-  // (AlarmLaunchHelper) before JS loads. Turning it OFF here would drop the app
-  // behind the lock screen for a moment before ringing starts. A normal launch
-  // has no static lock-screen flags, so skipping this first call is safe.
+  // LockScreenBypass sync: ON only while ringing/snoozed, OFF otherwise.
+  // The first 'idle' run on mount is skipped on purpose: when the native alarm
+  // auto-launches the app, MainActivity has already turned the bypass ON
+  // (AlarmLaunchHelper) before JS loads; turning it OFF here would drop the app
+  // behind the lock screen for a moment before ringing starts.
   useEffect(() => {
     if (isFirstBypassSyncRef.current) {
       isFirstBypassSyncRef.current = false;
@@ -76,6 +72,10 @@ export function WakeFlowProvider({ children }: { children: ReactNode }) {
   };
 
 
+  // Disarm (correct barcode) or dev Exit Preview: back to idle AND back to
+  // "ready to arm". Setting isArmed=false makes App.tsx cancel the native alarm
+  // (including the next repeat day the receiver already scheduled), so the user
+  // arms again each night, like a one-shot alarm.
   const dismissWake = () => {
     setWakeFlow({
       status: 'idle',
@@ -84,6 +84,7 @@ export function WakeFlowProvider({ children }: { children: ReactNode }) {
       snoozeCount: 0,
       currentSnoozeDurationSeconds: BASE_SNOOZE_SECONDS,
     });
+    updateSettings({ isArmed: false });
   };
 
 
@@ -95,19 +96,16 @@ export function WakeFlowProvider({ children }: { children: ReactNode }) {
   };
 
 
-  // Cruelty mode: every successive snooze in the same ring cycle halves the
-  // previous duration (floor of MIN_SNOOZE_SECONDS), mirroring the original
-  // web prototype's "crueltyMode" behavior. Off (default): always BASE_SNOOZE_SECONDS.
+  // Cruelty mode: every successive snooze halves the previous duration
+  // (floor MIN_SNOOZE_SECONDS). Off (default): always BASE_SNOOZE_SECONDS.
   const startSnooze = () => {
     setWakeFlow((prev) => {
       const nextCount = prev.snoozeCount + 1;
       let duration = BASE_SNOOZE_SECONDS;
 
-
       if (settings.crueltyModeEnabled && prev.snoozeCount > 0) {
         duration = Math.max(MIN_SNOOZE_SECONDS, Math.floor(prev.currentSnoozeDurationSeconds / 2));
       }
-
 
       return {
         ...prev,
@@ -125,11 +123,7 @@ export function WakeFlowProvider({ children }: { children: ReactNode }) {
       if (prev.status !== 'snoozed') {
         return prev;
       }
-
-
       const next = Math.max(0, prev.snoozeSecondsRemaining - 1);
-
-
       return {
         ...prev,
         snoozeSecondsRemaining: next,
