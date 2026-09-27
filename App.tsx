@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { Alert, AppState } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
@@ -25,6 +26,11 @@ import {
   dismissAlarmNotification,
   ALARM_NOTIFICATION_ID,
 } from './src/services/alarmScheduler';
+import {
+  consumePendingRing,
+  canUseFullScreenIntent,
+  openFullScreenIntentSettings,
+} from './src/native/alarmClock';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -92,6 +98,61 @@ function useBackgroundAlarmScheduler() {
   }, [settings.isArmed, settings.alarmHour, settings.alarmMinute, settings.repeatDays, settings.wakeItemName]);
 }
 
+// Native alarm auto-launch: when ClockGuardAlarmReceiver fires it sets a
+// "pending ring" flag and opens MainActivity via the full-screen intent.
+// Check that flag on launch and every time the app comes to the foreground.
+function useNativeAlarmLaunch() {
+  const { wakeFlow, startPreview } = useWakeFlow();
+  const statusRef = useRef(wakeFlow.status);
+  statusRef.current = wakeFlow.status;
+
+  useEffect(() => {
+    const check = async () => {
+      if (statusRef.current !== 'idle') return;
+      const pending = await consumePendingRing();
+      if (pending && statusRef.current === 'idle') {
+        startPreview();
+      }
+    };
+
+    check();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') check();
+    });
+    return () => subscription.remove();
+  }, []);
+
+  // Once ringing is on screen, the in-app tone takes over: clear the native
+  // alarm notification (stops its system sound) and the pending flag.
+  useEffect(() => {
+    if (wakeFlow.status === 'ringing') {
+      dismissAlarmNotification();
+      consumePendingRing();
+    }
+  }, [wakeFlow.status]);
+}
+
+// Android 14+: full-screen intents are a special permission the user can turn off.
+// Warn when arming if it is off, since the alarm then cannot open by itself.
+function useFullScreenPermissionCheck() {
+  const { settings } = useSettings();
+
+  useEffect(() => {
+    if (!settings.isArmed) return;
+    canUseFullScreenIntent().then((allowed) => {
+      if (allowed) return;
+      Alert.alert(
+        'Allow full-screen alarm',
+        'Android is blocking ClockGuard from opening by itself when the alarm rings. Turn on full-screen notifications for ClockGuard so the alarm opens automatically.',
+        [
+          { text: 'Later', style: 'cancel' },
+          { text: 'Open settings', onPress: openFullScreenIntentSettings },
+        ]
+      );
+    });
+  }, [settings.isArmed]);
+}
+
 function useNotificationResponseListener() {
   const { wakeFlow, startPreview } = useWakeFlow();
   const handledColdStartRef = useRef(false);
@@ -135,6 +196,8 @@ function RootContent() {
   const { wakeFlow } = useWakeFlow();
   useForegroundAlarmTrigger();
   useBackgroundAlarmScheduler();
+  useNativeAlarmLaunch();
+  useFullScreenPermissionCheck();
   useNotificationResponseListener();
 
   if (wakeFlow.status === 'ringing' || wakeFlow.status === 'snoozed') {

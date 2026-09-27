@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { useSettings } from './SettingsContext';
 import { setLockScreenBypassEnabled } from '../native/lockScreenBypass';
 
@@ -45,13 +45,22 @@ const WakeFlowContext = createContext<WakeFlowContextType | undefined>(undefined
 export function WakeFlowProvider({ children }: { children: ReactNode }) {
   const { settings } = useSettings();
   const [wakeFlow, setWakeFlow] = useState<WakeFlowState>(DEFAULT_WAKE_FLOW);
+  const isFirstBypassSyncRef = useRef(true);
 
   // LockScreenBypass sync: the native lock-screen-over-keyguard flags must be
   // ON only while status is 'ringing' or 'snoozed', and OFF the rest of the
   // time so the app behaves like any normal app when the phone is locked.
-  // Runs on every status change AND once on mount, so a fresh app launch
-  // always starts from a known-clean (bypass disabled) native state.
+  //
+  // The very first 'idle' run on mount is skipped on purpose: when the native
+  // alarm auto-launches the app, MainActivity has already turned the bypass ON
+  // (AlarmLaunchHelper) before JS loads. Turning it OFF here would drop the app
+  // behind the lock screen for a moment before ringing starts. A normal launch
+  // has no static lock-screen flags, so skipping this first call is safe.
   useEffect(() => {
+    if (isFirstBypassSyncRef.current) {
+      isFirstBypassSyncRef.current = false;
+      if (wakeFlow.status === 'idle') return;
+    }
     setLockScreenBypassEnabled(wakeFlow.status !== 'idle');
   }, [wakeFlow.status]);
 

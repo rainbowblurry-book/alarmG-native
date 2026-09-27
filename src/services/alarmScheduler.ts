@@ -1,9 +1,23 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import {
+  isNativeAlarmAvailable,
+  scheduleNativeAlarm,
+  cancelNativeAlarm,
+  clearNativeAlarmNotification,
+} from '../native/alarmClock';
 
 const ALARM_CHANNEL_ID = 'clockguard-alarm';
 const ALARM_NOTIFICATION_ID = 'clockguard-alarm-notification';
 const ALARM_CATEGORY_ID = 'clockguard-alarm-category';
+
+const ALARM_TITLE = 'ClockGuard — Wake up!';
+
+function alarmBody(wakeItemName: string): string {
+  return wakeItemName
+    ? `Scan your ${wakeItemName} to disarm.`
+    : 'Complete your wake-up mission to disarm.';
+}
 
 export async function ensureAlarmPermissions(): Promise<boolean> {
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -20,6 +34,7 @@ export async function ensureAlarmPermissions(): Promise<boolean> {
 export async function setupAlarmChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
 
+  // Fallback channel (only used when the native ClockGuardAlarm module is missing).
   await Notifications.setNotificationChannelAsync(ALARM_CHANNEL_ID, {
     name: 'Alarm',
     importance: Notifications.AndroidImportance.MAX,
@@ -30,18 +45,9 @@ export async function setupAlarmChannel(): Promise<void> {
     bypassDnd: true,
   });
 
-  await Notifications.setNotificationCategoryAsync(ALARM_CATEGORY_ID, [
-    {
-      identifier: 'DISMISS_ACTION',
-      buttonTitle: 'Dismiss',
-      options: { opensAppToForeground: true },
-    },
-    {
-      identifier: 'SNOOZE_ACTION',
-      buttonTitle: 'Snooze',
-      options: { opensAppToForeground: true },
-    },
-  ]);
+  // Removed on purpose: the old Dismiss/Snooze notification buttons let a sleepy
+  // user skip the movement + barcode mission entirely.
+  await Notifications.deleteNotificationCategoryAsync(ALARM_CATEGORY_ID).catch(() => {});
 }
 
 export function computeNextTriggerDate(
@@ -75,18 +81,24 @@ export async function scheduleAlarmNotification(
 ): Promise<void> {
   await cancelScheduledAlarm();
 
+  if (!repeatDays || repeatDays.length === 0) return;
+
+  // Preferred path: real native alarm (setAlarmClock + full-screen intent, auto-opens app).
+  if (isNativeAlarmAvailable()) {
+    await scheduleNativeAlarm(alarmHour, alarmMinute, repeatDays, ALARM_TITLE, alarmBody(wakeItemName));
+    return;
+  }
+
+  // Fallback: expo-notifications (requires tapping the notification).
   const triggerDate = computeNextTriggerDate(alarmHour, alarmMinute, repeatDays);
   if (!triggerDate) return;
 
   await Notifications.scheduleNotificationAsync({
     identifier: ALARM_NOTIFICATION_ID,
     content: {
-      title: 'ClockGuard — Wake up!',
-      body: wakeItemName
-        ? `Scan your ${wakeItemName} to disarm.`
-        : 'Complete your wake-up mission to disarm.',
+      title: ALARM_TITLE,
+      body: alarmBody(wakeItemName),
       priority: Notifications.AndroidNotificationPriority.MAX,
-      categoryIdentifier: ALARM_CATEGORY_ID,
       sticky: true,
       data: { type: 'clockguard-alarm' },
     },
@@ -100,10 +112,12 @@ export async function scheduleAlarmNotification(
 
 export async function cancelScheduledAlarm(): Promise<void> {
   await Notifications.cancelScheduledNotificationAsync(ALARM_NOTIFICATION_ID).catch(() => {});
+  await cancelNativeAlarm();
 }
 
 export async function dismissAlarmNotification(): Promise<void> {
   await Notifications.dismissNotificationAsync(ALARM_NOTIFICATION_ID).catch(() => {});
+  clearNativeAlarmNotification();
 }
 
 export { ALARM_NOTIFICATION_ID, ALARM_CATEGORY_ID };

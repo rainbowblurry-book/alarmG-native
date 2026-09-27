@@ -104,11 +104,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       if (storedSettings !== null) {
         const parsed = JSON.parse(storedSettings);
         if (isValidSettings(parsed)) {
+          // isArmed is now trusted across restarts: the native AlarmManager alarm
+          // survives app kills/reboots, so forcing it to false here would make
+          // App.tsx cancel a real scheduled alarm on every cold start.
           setSettings({
             ...DEFAULT_SETTINGS,
             ...parsed,
-            // Native alarm scheduling will own armed state in a later stage.
-            isArmed: false,
           });
         } else {
           setSettings(DEFAULT_SETTINGS);
