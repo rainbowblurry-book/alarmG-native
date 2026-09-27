@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSettings } from '../context/SettingsContext';
 import { useTheme } from '../context/ThemeContext';
 import { ThemeConfig, SEMANTIC_COLORS } from '../theme/themes';
+import AppearanceMediaCard from '../components/AppearanceMediaCard';
 
 const SHAPE = { md: 12, lg: 16, xl: 28, full: 999 };
 
@@ -79,6 +80,8 @@ export default function SettingsScreen() {
             </View>
           </View>
         </View>
+
+        <AppearanceMediaCard />
 
         {/* --- Sound --- */}
         <View style={styles.card}>
