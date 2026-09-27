@@ -23,6 +23,7 @@ export default function RingingScreen() {
     wakeFlow,
     incrementMovement,
     dismissWake,
+    exitPreview,
     startSnooze,
     decrementSnooze,
     returnToRingingFromSnooze,
@@ -341,7 +342,7 @@ export default function RingingScreen() {
               {settings.devUnlocked && (
                 <Pressable
                   style={styles.exitPreviewButton}
-                  onPress={dismissWake}
+                  onPress={exitPreview}
                   accessibilityLabel="Exit preview, testing only"
                 >
                   <Text style={styles.exitPreviewButtonText}>Exit Preview (Testing Only)</Text>
