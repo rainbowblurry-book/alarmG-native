@@ -338,13 +338,15 @@ export default function RingingScreen() {
                 </View>
               )}
 
-              <Pressable
-                style={styles.exitPreviewButton}
-                onPress={dismissWake}
-                accessibilityLabel="Exit preview, testing only"
-              >
-                <Text style={styles.exitPreviewButtonText}>Exit Preview (Testing Only)</Text>
-              </Pressable>
+              {settings.devUnlocked && (
+                <Pressable
+                  style={styles.exitPreviewButton}
+                  onPress={dismissWake}
+                  accessibilityLabel="Exit preview, testing only"
+                >
+                  <Text style={styles.exitPreviewButtonText}>Exit Preview (Testing Only)</Text>
+                </Pressable>
+              )}
             </View>
           </>
         ) : (

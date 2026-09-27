@@ -101,11 +101,13 @@ function useNotificationResponseListener() {
     handledColdStartRef.current = true;
 
     Notifications.getLastNotificationResponseAsync().then((response) => {
-      if (
-        response?.notification.request.identifier === ALARM_NOTIFICATION_ID &&
-        wakeFlow.status === 'idle'
-      ) {
+      const isAlarmNotification = response?.notification.request.identifier === ALARM_NOTIFICATION_ID;
+      const wasTapped = response?.actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER;
+
+      if (isAlarmNotification && wasTapped && wakeFlow.status === 'idle') {
         startPreview();
+      }
+      if (isAlarmNotification) {
         dismissAlarmNotification();
       }
       Notifications.clearLastNotificationResponseAsync();
@@ -114,11 +116,13 @@ function useNotificationResponseListener() {
 
   useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      if (
-        response.notification.request.identifier === ALARM_NOTIFICATION_ID &&
-        wakeFlow.status === 'idle'
-      ) {
+      const isAlarmNotification = response.notification.request.identifier === ALARM_NOTIFICATION_ID;
+      const wasTapped = response.actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER;
+
+      if (isAlarmNotification && wasTapped && wakeFlow.status === 'idle') {
         startPreview();
+      }
+      if (isAlarmNotification) {
         dismissAlarmNotification();
       }
     });
