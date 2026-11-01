@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { setVolumeBoostEnabled } from '../../modules/clockguard-alarm';
+import { setVolumeBoostEnabled, setWakeCheckMinutes } from '../../modules/clockguard-alarm';
 
 /**
  * User preferences and the mission setup. NOTE: whether the alarm is armed,
@@ -21,6 +21,8 @@ export type AlarmSettings = {
   crueltyModeEnabled: boolean;
   /** Snooze length in minutes, 1-20 (default 5). Cruelty mode halves from here. */
   snoozeMinutes: number;
+  /** Wake-up check after the mission: 0 = off (default), 3, 5 or 10 minutes. */
+  wakeCheckMinutes: number;
   /** Optional, default OFF: raise a low ALARM volume to 60% once when ringing starts (D-30). */
   volumeBoostEnabled: boolean;
 };
@@ -43,8 +45,11 @@ const DEFAULT_SETTINGS: AlarmSettings = {
   movementTarget: 15,
   crueltyModeEnabled: false,
   snoozeMinutes: 5,
+  wakeCheckMinutes: 0,
   volumeBoostEnabled: false,
 };
+
+export const WAKE_CHECK_OPTIONS = [0, 3, 5, 10] as const;
 
 /** Allowed ranges (also used by the setup screens). */
 export const MOVEMENT_RANGE = { min: 10, max: 500 } as const;
@@ -75,6 +80,7 @@ function sanitize(data: unknown): AlarmSettings {
   // Old builds allowed 5-50; anything under the new minimum falls back to the default.
   if (isInt(d.movementTarget, MOVEMENT_RANGE.min, MOVEMENT_RANGE.max)) out.movementTarget = d.movementTarget;
   if (isInt(d.snoozeMinutes, SNOOZE_RANGE.min, SNOOZE_RANGE.max)) out.snoozeMinutes = d.snoozeMinutes;
+  if (typeof d.wakeCheckMinutes === 'number' && (WAKE_CHECK_OPTIONS as readonly number[]).includes(d.wakeCheckMinutes)) out.wakeCheckMinutes = d.wakeCheckMinutes;
   if (typeof d.crueltyModeEnabled === 'boolean') out.crueltyModeEnabled = d.crueltyModeEnabled;
   if (typeof d.volumeBoostEnabled === 'boolean') out.volumeBoostEnabled = d.volumeBoostEnabled;
   return out;
@@ -105,6 +111,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isLoading) setVolumeBoostEnabled(settings.volumeBoostEnabled);
   }, [isLoading, settings.volumeBoostEnabled]);
+
+  // The engine schedules the wake-up check itself, so keep it in sync too.
+  useEffect(() => {
+    if (!isLoading) setWakeCheckMinutes(settings.wakeCheckMinutes);
+  }, [isLoading, settings.wakeCheckMinutes]);
 
   const updateSettings = (newSettings: Partial<AlarmSettings>) => {
     setSettings((previous) => {

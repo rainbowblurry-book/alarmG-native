@@ -17,7 +17,10 @@ class AlarmReceiver : BroadcastReceiver() {
         AlarmScheduler.ACTION_RING -> {
           if (!AlarmStore.isArmed(context)) return
           val firedId = AlarmStore.nextAlarmId(context)
-          if (AlarmStore.state(context) == AlarmStore.STATE_IDLE) {
+          val before = AlarmStore.state(context)
+          // A scheduled alarm replaces any pending or on-screen wake-up check.
+          WakeCheck.clearAll(context)
+          if (before == AlarmStore.STATE_IDLE || before == AlarmStore.STATE_CHECK) {
             AlarmStore.startNewRing(context, isTest = false)
           } else {
             // A ring or snooze is still active (e.g. a test ring): the real alarm takes over.
@@ -35,6 +38,8 @@ class AlarmReceiver : BroadcastReceiver() {
         AlarmScheduler.ACTION_RING_TIMEOUT -> {
           if (AlarmStore.state(context) == AlarmStore.STATE_RINGING) RingSession.giveUp(context)
         }
+        AlarmScheduler.ACTION_WAKE_CHECK -> WakeCheck.fire(context)
+        AlarmScheduler.ACTION_CHECK_TIMEOUT -> WakeCheck.timeout(context)
         AlarmScheduler.ACTION_RESUME -> {
           if (AlarmStore.state(context) != AlarmStore.STATE_RINGING) return
           AlarmRingService.start(context)
@@ -81,6 +86,8 @@ class BootReceiver : BroadcastReceiver() {
     try {
       when (AlarmStore.state(context)) {
         AlarmStore.STATE_RINGING -> AlarmScheduler.scheduleResume(context)
+        // A check that was on screen during the reboot: ring (needs the mission).
+        AlarmStore.STATE_CHECK -> AlarmScheduler.scheduleCheckTimeout(context, System.currentTimeMillis() + 3000L)
         AlarmStore.STATE_SNOOZED -> {
           val until = AlarmStore.snoozeUntil(context)
           if (until <= System.currentTimeMillis()) {
@@ -91,6 +98,10 @@ class BootReceiver : BroadcastReceiver() {
           }
         }
       }
+      // A pending check comes back after a reboot; one that is already overdue is skipped.
+      val checkAt = AlarmStore.checkAt(context)
+      if (checkAt > System.currentTimeMillis()) AlarmScheduler.scheduleWakeCheck(context, checkAt)
+      else if (checkAt != 0L && AlarmStore.state(context) == AlarmStore.STATE_IDLE) AlarmStore.clearCheck(context)
       // TESTING-ONLY START
       val testAt = AlarmStore.testRingAt(context)
       if (testAt > System.currentTimeMillis()) AlarmScheduler.scheduleTestRing(context, testAt)

@@ -45,12 +45,15 @@ const initialAlarms: AlarmItem[] = [
   ...(q.get('alarms') === '2' ? [{ id: 'a2', hour: 8, minute: 30, days: [0, 6], enabled: false, nextTriggerAt: 0 }] : []),
 ];
 const baseAlarm: AlarmState = {
-  state: state === 'ringing' || state === 'scan' ? 'ringing' : state === 'snoozed' ? 'snoozed' : 'idle',
+  state: state === 'ringing' || state === 'scan' ? 'ringing' : state === 'snoozed' ? 'snoozed' : state === 'check' ? 'check' : 'idle',
   armed: armedFirst,
   alarms: initialAlarms,
   nextAlarmId: armedFirst ? 'a1' : '',
   ringingAlarmId: '',
   lastMissedSession: 0,
+  wakeCheckMinutes: 0,
+  checkAt: 0,
+  checkDeadline: state === 'check' ? now + 42000 : 0,
   hour: 6,
   minute: 45,
   days: [1, 2, 3, 4, 5],
@@ -75,6 +78,7 @@ const baseSettings: AlarmSettings = {
   movementTarget: Number(q.get('moves') ?? 15),
   crueltyModeEnabled: false,
   snoozeMinutes: 5,
+  wakeCheckMinutes: Number(q.get('check') ?? 0),
   volumeBoostEnabled: false,
 };
 
@@ -108,6 +112,7 @@ export default function PreviewApp() {
               setList((l) => l.map((x) => (x.id === id ? { ...x, enabled, nextTriggerAt: enabled ? now + 9 * 3600000 : 0 } : x)));
               return null;
             },
+            confirmAwake: () => setAlarm((a) => ({ ...a, state: 'idle' })),
             deleteAlarm: (id) => {
               setList((l) => l.filter((x) => x.id !== id));
               return null;

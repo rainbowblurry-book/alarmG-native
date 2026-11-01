@@ -34,6 +34,8 @@ type WakeFlowContextType = {
   saveAlarm: (id: string, hour: number, minute: number, days: number[]) => string | null;
   setAlarmEnabled: (id: string, enabled: boolean) => string | null;
   deleteAlarm: (id: string) => string | null;
+  /** "I'm up" on the wake-up check. */
+  confirmAwake: () => void;
   /** Returns null on success, or why the snooze failed (the alarm keeps ringing). */
   snooze: (seconds: number) => string | null;
   disarm: () => void;
@@ -111,6 +113,11 @@ export function WakeFlowProvider({ children }: { children: ReactNode }) {
   const setAlarmEnabled = useCallback((id: string, enabled: boolean) => wrap(() => Alarm.setAlarmEnabled(id, enabled)), [wrap]);
   const deleteAlarm = useCallback((id: string) => wrap(() => Alarm.deleteAlarm(id)), [wrap]);
 
+  const confirmAwake = useCallback(() => {
+    Alarm.confirmAwake();
+    refresh();
+  }, [refresh]);
+
   const snooze = useCallback((seconds: number) => {
     try {
       Alarm.snooze(seconds);
@@ -165,6 +172,7 @@ export function WakeFlowProvider({ children }: { children: ReactNode }) {
         saveAlarm,
         setAlarmEnabled,
         deleteAlarm,
+        confirmAwake,
         snooze,
         disarm,
         refresh,

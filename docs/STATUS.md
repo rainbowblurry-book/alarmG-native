@@ -65,7 +65,14 @@ Plan: [FEATURES-PLAN.md](FEATURES-PLAN.md). Everything unlocked for now; premium
     the mission; (3) two alarms at the same minute → one ring; (4) turn one off → the other still rings;
     (5) reboot with 2 armed → both still ring; (6) an alarm that is on can't be edited or deleted;
     (7) mission chips locked while any alarm is on; (8) 90-min limit and test alarm unchanged.
-- Phase 3, Wake-up check: not started (engine change, after Phase 2 passes).
+- **Phase 3, Wake-up check (engine change, OFF by default)** [code; CI compiles it; web preview checked]:
+  Mission → Check: Off / 3 / 5 / 10 min. After the mission: "Still up?" full-screen for 60 s with one
+  I'm-up button; no tap → rings again with the full mission (own 90-min limit, no second check).
+  **Test only after Phase 2 passed.** Because it is OFF by default, it changes nothing until you turn it on.
+  - Device tests: (1) check 3 min + Test alarm → finish mission → after 3 min "Still up?" appears (also over
+    the lock screen) → tap → nothing more; (2) same but don't tap → rings again after 60 s → mission → no
+    second check; (3) check Off → nothing after the mission; (4) Exit test during the check → stops;
+    (5) a real alarm due during a pending check → the real alarm rings normally.
 
 ## Known limitations (honest)
 - **Force stop** (App info → Force stop) cancels all alarms until the app is opened again. This is an Android rule. **Removing the app from Recents is fine**: the alarm and ringing survive it [device, test 4].

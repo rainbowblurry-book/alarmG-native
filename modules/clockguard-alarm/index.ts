@@ -9,7 +9,8 @@ import { Platform } from 'react-native';
  * these functions after the user completes the mission.
  */
 
-export type RingState = 'idle' | 'ringing' | 'snoozed';
+/** 'check' = the optional wake-up check is on screen ("Still up?"). */
+export type RingState = 'idle' | 'ringing' | 'snoozed' | 'check';
 
 /** One alarm of the list (max 5). */
 export type AlarmItem = {
@@ -35,6 +36,12 @@ export type AlarmState = {
   ringingAlarmId: string;
   /** session start of the last real ring that hit the 90-minute limit (streaks) */
   lastMissedSession: number;
+  /** wake-up check: 0 = off, else minutes after the mission */
+  wakeCheckMinutes: number;
+  /** epoch ms when a pending check fires (0 = none) */
+  checkAt: number;
+  /** epoch ms when the on-screen check runs out (state 'check') */
+  checkDeadline: number;
   hour: number;
   minute: number;
   days: number[];
@@ -74,6 +81,8 @@ declare class ClockGuardEngineNative extends NativeModule<Events> {
   saveAlarm(id: string, hour: number, minute: number, days: number[]): void;
   setAlarmEnabled(id: string, enabled: boolean): number;
   deleteAlarm(id: string): boolean;
+  confirmAwake(): boolean;
+  setWakeCheckMinutes(minutes: number): void;
   snooze(seconds: number): boolean;
   disarm(): boolean;
   setVolumeBoostEnabled(enabled: boolean): void;
@@ -99,6 +108,9 @@ const IDLE: AlarmState = {
   nextAlarmId: '',
   ringingAlarmId: '',
   lastMissedSession: 0,
+  wakeCheckMinutes: 0,
+  checkAt: 0,
+  checkDeadline: 0,
   hour: 7,
   minute: 0,
   days: [],
@@ -177,6 +189,15 @@ export function setAlarmEnabled(id: string, enabled: boolean): number {
 export function deleteAlarm(id: string): boolean {
   if (!Native) throw Object.assign(new Error('Alarm engine missing'), { code: 'ERR_NO_ENGINE' });
   return Native.deleteAlarm(id);
+}
+
+/** "I'm up" on the wake-up check. */
+export function confirmAwake(): boolean {
+  return Native ? Native.confirmAwake() : false;
+}
+
+export function setWakeCheckMinutes(minutes: number): void {
+  Native?.setWakeCheckMinutes(minutes);
 }
 
 export function snooze(seconds: number): boolean {

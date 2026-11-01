@@ -57,6 +57,7 @@ src/logic/pin.ts, useReadiness.ts  PIN rules; permissions, arming gates, day/tim
 src/logic/mornings.ts            streak history (AsyncStorage '@clockguard_mornings'), done/missed recording, stats
 src/logic/features.ts            free/premium registry (all unlocked for now)
 src/screens/MorningsScreen.tsx   streak + last 4 weeks + averages
+src/screens/WakeCheckScreens.tsx "Still up?" screen (engine state 'check') + the wake-up check setting page
 src/navigation/AppNavigator.tsx  native stack: Intro, Welcome, Home, Item, Pin, Movement, Settings, Readiness, Design
 src/screens/IntroScreen.tsx      first-launch walkthrough (4 cards, skippable; replay from Settings)
 src/screens/HomeScreen.tsx       hero for the shown alarm (per-design layout), alarm chips row, Mission chips, hold-to-arm
@@ -71,6 +72,7 @@ docs/                            STATUS, DECISIONS, BUILD-AND-INSTALL, this file
 
 ## 4. Engine state machine (native, persisted)
 `idle` → (scheduled ring / snooze end / test ring fires) → `ringing` → PIN snooze → `snoozed` → (snooze end) → `ringing` → mission → `disarm()` → `idle`.
+Optional wake-up check (D-50, `WakeCheck.kt`): `disarm()` → (N min, exact alarm `WAKE_CHECK`) → `check` → `confirmAwake()` → `idle`, or (60 s, `CHECK_TIMEOUT`) → new `ringing` session marked `isCheckRing` (no second check).
 
 | Who | What |
 |---|---|

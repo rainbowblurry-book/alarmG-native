@@ -15,6 +15,7 @@ import { SettingsProvider, useSettings } from './src/context/SettingsContext';
 import { WakeFlowProvider, useWakeFlow } from './src/context/WakeFlowContext';
 import { DesignProvider, useDesign } from './src/context/DesignContext';
 import RingingScreen from './src/screens/RingingScreen';
+import { WakeCheckScreen } from './src/screens/WakeCheckScreens';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import { useMorningsRecorder } from './src/logic/mornings';
 
@@ -77,6 +78,15 @@ function useWheelTimeSync() {
 export function AppShell({ initialRoute }: { initialRoute?: React.ComponentProps<typeof AppNavigator>['initialRoute'] }) {
   const { alarm } = useWakeFlow();
   const { pack } = useDesign();
+
+  if (alarm.state === 'check') {
+    return (
+      <>
+        <StatusBar style="light" />
+        <WakeCheckScreen />
+      </>
+    );
+  }
 
   if (alarm.state !== 'idle') {
     return (

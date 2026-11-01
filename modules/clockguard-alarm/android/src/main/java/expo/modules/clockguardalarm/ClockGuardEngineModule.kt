@@ -132,10 +132,27 @@ class ClockGuardEngineModule : Module() {
     /** Mission complete (movement + matching barcode). The schedule stays armed for the next day. */
     Function("disarm") {
       val ctx = context
-      if (AlarmStore.state(ctx) == AlarmStore.STATE_IDLE) return@Function false
+      val st = AlarmStore.state(ctx)
+      if (st == AlarmStore.STATE_IDLE || st == AlarmStore.STATE_CHECK) return@Function false
+      val wasCheckRing = AlarmStore.isCheckRing(ctx)
+      val isTest = AlarmStore.isTestRing(ctx)
       // If rescheduling fails, nextTriggerAt stays 0 and the UI shows "alarm NOT active".
       RingSession.end(ctx)
+      // Optional wake-up check N minutes later (never after a ring that came from a missed check).
+      WakeCheck.afterMission(ctx, wasCheckRing, isTest)
+      AlarmStateBus.notifyChanged(ctx)
       true
+    }
+
+    /** "I'm up" on the wake-up check screen. */
+    Function("confirmAwake") {
+      WakeCheck.confirm(context)
+    }
+
+    /** Wake-up check: 0 = off (default), otherwise minutes after the mission. */
+    Function("setWakeCheckMinutes") { minutes: Int ->
+      AlarmStore.setWakeCheckMinutes(context, minutes)
+      AlarmStateBus.notifyChanged(context)
     }
 
     /** Optional, default OFF: raise a low alarm volume to 60% once at ring start. */

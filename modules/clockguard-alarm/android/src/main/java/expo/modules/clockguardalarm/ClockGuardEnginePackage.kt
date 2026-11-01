@@ -50,7 +50,8 @@ class RingingActivityListener : ReactActivityLifecycleListener {
   }
 
   private fun applyFlags(activity: Activity) {
-    val ringing = AlarmStore.state(activity) == AlarmStore.STATE_RINGING
+    // Over the lock screen while ringing or while the wake-up check is on screen.
+    val ringing = AlarmStore.state(activity).let { it == AlarmStore.STATE_RINGING || it == AlarmStore.STATE_CHECK }
     activity.runOnUiThread {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
         activity.setShowWhenLocked(ringing)

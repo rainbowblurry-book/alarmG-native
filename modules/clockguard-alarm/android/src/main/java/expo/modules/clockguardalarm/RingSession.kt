@@ -14,6 +14,7 @@ object RingSession {
   fun end(ctx: Context) {
     AlarmScheduler.cancelSnoozeEnd(ctx)
     AlarmScheduler.cancelRingTimeout(ctx)
+    WakeCheck.clearAll(ctx)
     AlarmStore.setIdle(ctx)
     AlarmRingService.stop(ctx)
     VolumeBoost.restore(ctx)

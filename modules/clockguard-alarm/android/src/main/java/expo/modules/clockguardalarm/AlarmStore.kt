@@ -20,6 +20,8 @@ object AlarmStore {
   const val STATE_IDLE = "idle"
   const val STATE_RINGING = "ringing"
   const val STATE_SNOOZED = "snoozed"
+  /** Wake-up check on screen ("Still up?"), see WakeCheck. */
+  const val STATE_CHECK = "check"
 
   private const val PREFS = "clockguard_engine_v1"
   const val MAX_ALARMS = 5
@@ -38,6 +40,11 @@ object AlarmStore {
   private const val K_NEXT_ALARM_ID = "nextAlarmId"
   private const val K_RINGING_ALARM_ID = "ringingAlarmId"
   private const val K_LAST_MISSED_SESSION = "lastMissedSession"
+  private const val K_WAKE_CHECK_MIN = "wakeCheckMinutes"
+  private const val K_CHECK_AT = "checkAt"
+  private const val K_CHECK_DEADLINE = "checkDeadline"
+  private const val K_CHECK_TEST = "checkIsTest"
+  private const val K_CHECK_RING = "isCheckRing"
   private const val K_VOLUME_BOOST = "volumeBoostEnabled"
   private const val K_VOL_RESTORE_TO = "volumeRestoreTo"
   private const val K_VOL_SET_TO = "volumeSetTo"
@@ -140,6 +147,7 @@ object AlarmStore {
       .putInt(K_SNOOZE_COUNT, 0)
       .putLong(K_SNOOZE_UNTIL, 0L)
       .putBoolean(K_IS_TEST, isTest)
+      .putBoolean(K_CHECK_RING, false)
       .commit()
   }
 
@@ -173,7 +181,44 @@ object AlarmStore {
       .putLong(K_SESSION_STARTED_AT, 0L)
       .putBoolean(K_IS_TEST, false)
       .putString(K_RINGING_ALARM_ID, "")
+      .putBoolean(K_CHECK_RING, false)
       .commit()
+  }
+
+  // ---- wake-up check (default OFF) ----
+
+  fun wakeCheckMinutes(ctx: Context) = prefs(ctx).getInt(K_WAKE_CHECK_MIN, 0)
+
+  fun setWakeCheckMinutes(ctx: Context, minutes: Int) {
+    prefs(ctx).edit().putInt(K_WAKE_CHECK_MIN, minutes.coerceIn(0, 30)).commit()
+  }
+
+  /** When a pending check fires (0 = none). */
+  fun checkAt(ctx: Context) = prefs(ctx).getLong(K_CHECK_AT, 0L)
+  fun checkDeadline(ctx: Context) = prefs(ctx).getLong(K_CHECK_DEADLINE, 0L)
+  fun checkIsTest(ctx: Context) = prefs(ctx).getBoolean(K_CHECK_TEST, false)
+  /** True for a ring started because a check was missed (it gets no second check). */
+  fun isCheckRing(ctx: Context) = prefs(ctx).getBoolean(K_CHECK_RING, false)
+
+  fun setCheckPending(ctx: Context, at: Long, isTest: Boolean) {
+    prefs(ctx).edit().putLong(K_CHECK_AT, at).putBoolean(K_CHECK_TEST, isTest).commit()
+  }
+
+  fun startCheck(ctx: Context, deadline: Long, isTest: Boolean) {
+    prefs(ctx).edit()
+      .putString(K_STATE, STATE_CHECK)
+      .putLong(K_CHECK_DEADLINE, deadline)
+      .putBoolean(K_CHECK_TEST, isTest)
+      .putBoolean(K_IS_TEST, isTest)
+      .commit()
+  }
+
+  fun clearCheck(ctx: Context) {
+    prefs(ctx).edit().putLong(K_CHECK_AT, 0L).putLong(K_CHECK_DEADLINE, 0L).putBoolean(K_CHECK_TEST, false).commit()
+  }
+
+  fun setCheckRing(ctx: Context, value: Boolean) {
+    prefs(ctx).edit().putBoolean(K_CHECK_RING, value).commit()
   }
 
   // ---- optional volume boost (default OFF) ----
@@ -228,6 +273,9 @@ object AlarmStore {
     "nextAlarmId" to nextAlarmId(ctx),
     "ringingAlarmId" to ringingAlarmId(ctx),
     "lastMissedSession" to lastMissedSession(ctx).toDouble(),
+    "wakeCheckMinutes" to wakeCheckMinutes(ctx),
+    "checkAt" to checkAt(ctx).toDouble(),
+    "checkDeadline" to checkDeadline(ctx).toDouble(),
     "snoozeUntil" to snoozeUntil(ctx).toDouble(),
     "snoozeCount" to snoozeCount(ctx),
     "ringStartedAt" to ringStartedAt(ctx).toDouble(),

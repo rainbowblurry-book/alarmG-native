@@ -8,6 +8,7 @@ export type RootStack = {
   Settings: undefined;
   Readiness: undefined;
   Mornings: undefined;
+  WakeCheck: undefined;
   // TESTING-ONLY START
   Design: undefined;
   // TESTING-ONLY END

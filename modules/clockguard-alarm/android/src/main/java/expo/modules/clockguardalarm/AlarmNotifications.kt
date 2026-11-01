@@ -18,16 +18,20 @@ object AlarmNotifications {
   /** Used only if the ring service could not start: the notification itself loops the sound. */
   private const val CH_FALLBACK = "clockguard_fallback_v2"
   private const val CH_SNOOZED = "clockguard_snoozed_v2"
+  /** Wake-up check: vibrates with a short sound on the alarm stream. */
+  private const val CH_CHECK = "clockguard_wakecheck_v1"
 
   const val ID_RINGING = 9201
   const val ID_RELAUNCH = 9202
   const val ID_FALLBACK = 9203
   const val ID_SNOOZED = 9204
   const val ID_MISSED = 9205
+  const val ID_CHECK = 9206
 
   private const val REQ_FULLSCREEN = 9301
   private const val REQ_RELAUNCH = 9302
   private const val REQ_OPEN = 9303
+  private const val REQ_CHECK = 9304
 
   private const val TITLE = "ClockGuard: wake up!"
   private const val BODY = "Do your wake-up mission to turn the alarm off."
@@ -70,7 +74,21 @@ object AlarmNotifications {
       setSound(null, null)
       enableVibration(false)
     }
-    nm.createNotificationChannels(listOf(ringing, fallback, snoozed))
+    val check = NotificationChannel(CH_CHECK, "Wake-up check", NotificationManager.IMPORTANCE_HIGH).apply {
+      description = "\"Still up?\" a few minutes after the mission (only when the wake-up check is on)."
+      setSound(
+        RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+        AudioAttributes.Builder()
+          .setUsage(AudioAttributes.USAGE_ALARM)
+          .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+          .build()
+      )
+      enableVibration(true)
+      vibrationPattern = longArrayOf(0, 600, 300, 600, 300, 600)
+      lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+      setBypassDnd(true)
+    }
+    nm.createNotificationChannels(listOf(ringing, fallback, snoozed, check))
   }
 
   private fun fullScreenPendingIntent(ctx: Context, requestCode: Int): PendingIntent =
@@ -124,6 +142,28 @@ object AlarmNotifications {
     n.flags = n.flags or Notification.FLAG_INSISTENT // loop the channel sound until opened/cancelled
     runCatching { nm(ctx).notify(ID_FALLBACK, n) }
   }
+
+  /** Full-screen "Still up?" for the wake-up check (60-second window). */
+  fun showWakeCheck(ctx: Context) {
+    ensureChannels(ctx)
+    val pi = fullScreenPendingIntent(ctx, REQ_CHECK)
+    val n = NotificationCompat.Builder(ctx, CH_CHECK)
+      .setSmallIcon(ctx.applicationInfo.icon)
+      .setContentTitle("Still up?")
+      .setContentText("Tap I'm up within a minute, or the alarm rings again.")
+      .setPriority(NotificationCompat.PRIORITY_MAX)
+      .setCategory(NotificationCompat.CATEGORY_ALARM)
+      .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+      .setFullScreenIntent(pi, true)
+      .setContentIntent(pi)
+      .setOngoing(true)
+      .setAutoCancel(false)
+      .setTimeoutAfter(WakeCheck.WINDOW_MS + 30_000L)
+      .build()
+    runCatching { nm(ctx).notify(ID_CHECK, n) }
+  }
+
+  fun cancelWakeCheck(ctx: Context) = nm(ctx).cancel(ID_CHECK)
 
   fun showSnoozed(ctx: Context, until: Long) {
     ensureChannels(ctx)

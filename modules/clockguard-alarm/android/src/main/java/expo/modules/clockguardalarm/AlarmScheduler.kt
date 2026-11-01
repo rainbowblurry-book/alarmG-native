@@ -16,6 +16,7 @@ class ExactAlarmDeniedException : IllegalStateException("Exact alarms are not al
  *  - RING: the soonest ring among all alarms that are on.
  *  - SNOOZE_END: when the current snooze is over.
  *  - RESUME: restart an interrupted ring shortly after reboot.
+ *  - WAKE_CHECK / CHECK_TIMEOUT: the optional wake-up check after the mission.
  *  - TEST: a one-off test ring (testing-only).
  */
 object AlarmScheduler {
@@ -32,6 +33,10 @@ object AlarmScheduler {
   private const val REQ_RESUME = 9103
   private const val REQ_SHOW = 9104
   private const val REQ_TIMEOUT = 9106
+  private const val REQ_WAKE_CHECK = 9107
+  private const val REQ_CHECK_TIMEOUT = 9108
+  const val ACTION_WAKE_CHECK = "expo.modules.clockguardalarm.ACTION_WAKE_CHECK"
+  const val ACTION_CHECK_TIMEOUT = "expo.modules.clockguardalarm.ACTION_CHECK_TIMEOUT"
   const val ACTION_RING_TIMEOUT = "expo.modules.clockguardalarm.ACTION_RING_TIMEOUT"
 
   /** Ringing stops by itself this long after the alarm first rang (snoozes included). */
@@ -146,6 +151,20 @@ object AlarmScheduler {
   }
 
   fun cancelRingTimeout(ctx: Context) = cancel(ctx, ACTION_RING_TIMEOUT, REQ_TIMEOUT)
+
+  /** Wake-up check, N minutes after the mission (WakeCheck). */
+  fun scheduleWakeCheck(ctx: Context, at: Long) {
+    setExact(ctx, at, broadcast(ctx, ACTION_WAKE_CHECK, REQ_WAKE_CHECK))
+  }
+
+  fun cancelWakeCheck(ctx: Context) = cancel(ctx, ACTION_WAKE_CHECK, REQ_WAKE_CHECK)
+
+  /** End of the 60-second "Still up?" window. */
+  fun scheduleCheckTimeout(ctx: Context, at: Long) {
+    setExact(ctx, at, broadcast(ctx, ACTION_CHECK_TIMEOUT, REQ_CHECK_TIMEOUT))
+  }
+
+  fun cancelCheckTimeout(ctx: Context) = cancel(ctx, ACTION_CHECK_TIMEOUT, REQ_CHECK_TIMEOUT)
 
   // TESTING-ONLY START
   fun scheduleTestRing(ctx: Context, at: Long) {

@@ -233,6 +233,15 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<RootSt
           />
           <Chip icon={retro ? 'barcode-sharp' : 'barcode-outline'} label="Item" ok={gate.itemOk} disabled={anyArmed} onPress={() => navigation.navigate('Item')} tint="#F6CFC4" tilt={1.5} />
           <Chip icon={retro ? 'keypad-sharp' : 'keypad-outline'} label="PIN" ok={gate.pinOk} disabled={anyArmed} onPress={() => navigation.navigate('Pin')} tint="#D4E8C8" tilt={-1} />
+          <Chip
+            icon={retro ? 'checkmark-done-sharp' : 'checkmark-done-outline'}
+            label={settings.wakeCheckMinutes ? `Check ${settings.wakeCheckMinutes}m` : 'Check off'}
+            ok
+            disabled={anyArmed}
+            onPress={() => navigation.navigate('WakeCheck')}
+            tint="#CFE0F0"
+            tilt={1.5}
+          />
         </View>
       </View>
 
