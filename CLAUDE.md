@@ -10,6 +10,7 @@ Read before working:
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — verified structure and file map
 - [docs/DECISIONS.md](docs/DECISIONS.md) — product/technical decisions and what superseded what
 - [docs/BUILD-AND-INSTALL.md](docs/BUILD-AND-INSTALL.md) — free CI build, signing secrets, install
+- [docs/UI-PLAN.md](docs/UI-PLAN.md) — approved UI/UX variants plan (branch feature/ui-variants); wait for the user's "go"
 
 Rules:
 - Never introduce paid services or dependencies that cost money now or later.
