@@ -31,6 +31,13 @@ object AlarmScheduler {
   private const val REQ_SNOOZE_END = 9102
   private const val REQ_RESUME = 9103
   private const val REQ_SHOW = 9104
+  private const val REQ_TIMEOUT = 9106
+  const val ACTION_RING_TIMEOUT = "expo.modules.clockguardalarm.ACTION_RING_TIMEOUT"
+
+  /** Ringing stops by itself this long after the alarm first rang (snoozes included). */
+  const val MAX_SESSION_MS = 90L * 60L * 1000L
+  /** A ring that starts after the limit (e.g. a late snooze ending) still rings this long. */
+  const val MIN_FINAL_RING_MS = 5L * 60L * 1000L
 
   fun canScheduleExact(ctx: Context): Boolean {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
@@ -116,6 +123,16 @@ object AlarmScheduler {
   fun scheduleResume(ctx: Context, delayMs: Long = 3000L) {
     setExact(ctx, System.currentTimeMillis() + delayMs, broadcast(ctx, ACTION_RESUME, REQ_RESUME))
   }
+
+  /** Called whenever ringing (re)starts. */
+  fun scheduleRingTimeout(ctx: Context) {
+    val now = System.currentTimeMillis()
+    val session = AlarmStore.sessionStartedAt(ctx).takeIf { it > 0L } ?: now
+    val at = maxOf(session + MAX_SESSION_MS, now + MIN_FINAL_RING_MS)
+    setExact(ctx, at, broadcast(ctx, ACTION_RING_TIMEOUT, REQ_TIMEOUT))
+  }
+
+  fun cancelRingTimeout(ctx: Context) = cancel(ctx, ACTION_RING_TIMEOUT, REQ_TIMEOUT)
 
   // TESTING-ONLY START
   fun scheduleTestRing(ctx: Context, at: Long) {

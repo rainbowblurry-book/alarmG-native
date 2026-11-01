@@ -27,6 +27,7 @@ object AlarmStore {
   private const val K_SNOOZE_COUNT = "snoozeCount"
   private const val K_RING_STARTED_AT = "ringStartedAt"
   private const val K_NEXT_TRIGGER_AT = "nextTriggerAt"
+  private const val K_SESSION_STARTED_AT = "sessionStartedAt"
   private const val K_VOLUME_BOOST = "volumeBoostEnabled"
   private const val K_VOL_RESTORE_TO = "volumeRestoreTo"
   private const val K_VOL_SET_TO = "volumeSetTo"
@@ -77,12 +78,16 @@ object AlarmStore {
   fun snoozeUntil(ctx: Context) = prefs(ctx).getLong(K_SNOOZE_UNTIL, 0L)
   fun snoozeCount(ctx: Context) = prefs(ctx).getInt(K_SNOOZE_COUNT, 0)
   fun ringStartedAt(ctx: Context) = prefs(ctx).getLong(K_RING_STARTED_AT, 0L)
+  /** When this alarm first started ringing (kept across snoozes); drives the 90-minute limit. */
+  fun sessionStartedAt(ctx: Context) = prefs(ctx).getLong(K_SESSION_STARTED_AT, 0L)
 
   /** A brand-new ring: resets the snooze counter. */
   fun startNewRing(ctx: Context, isTest: Boolean) {
+    val now = System.currentTimeMillis()
     prefs(ctx).edit()
       .putString(K_STATE, STATE_RINGING)
-      .putLong(K_RING_STARTED_AT, System.currentTimeMillis())
+      .putLong(K_RING_STARTED_AT, now)
+      .putLong(K_SESSION_STARTED_AT, now)
       .putInt(K_SNOOZE_COUNT, 0)
       .putLong(K_SNOOZE_UNTIL, 0L)
       .putBoolean(K_IS_TEST, isTest)
@@ -91,11 +96,14 @@ object AlarmStore {
 
   /** Ringing again after a snooze, or a real alarm taking over an active ring. */
   fun resumeRing(ctx: Context, clearTestFlag: Boolean = false) {
+    val now = System.currentTimeMillis()
     val e = prefs(ctx).edit()
       .putString(K_STATE, STATE_RINGING)
-      .putLong(K_RING_STARTED_AT, System.currentTimeMillis())
+      .putLong(K_RING_STARTED_AT, now)
       .putLong(K_SNOOZE_UNTIL, 0L)
-    if (clearTestFlag) e.putBoolean(K_IS_TEST, false)
+    // A real alarm taking over (e.g. from a test ring) starts its own 90-minute window.
+    if (clearTestFlag) e.putBoolean(K_IS_TEST, false).putLong(K_SESSION_STARTED_AT, now)
+    if (sessionStartedAt(ctx) == 0L) e.putLong(K_SESSION_STARTED_AT, now)
     e.commit()
   }
 
@@ -113,6 +121,7 @@ object AlarmStore {
       .putLong(K_SNOOZE_UNTIL, 0L)
       .putInt(K_SNOOZE_COUNT, 0)
       .putLong(K_RING_STARTED_AT, 0L)
+      .putLong(K_SESSION_STARTED_AT, 0L)
       .putBoolean(K_IS_TEST, false)
       .commit()
   }
@@ -155,6 +164,7 @@ object AlarmStore {
     "snoozeCount" to snoozeCount(ctx),
     "ringStartedAt" to ringStartedAt(ctx).toDouble(),
     "nextTriggerAt" to nextTriggerAt(ctx).toDouble(),
+    "sessionStartedAt" to sessionStartedAt(ctx).toDouble(),
     "volumeBoostEnabled" to isVolumeBoostEnabled(ctx),
     // TESTING-ONLY START
     "isTestRing" to isTestRing(ctx),

@@ -23,6 +23,7 @@ object AlarmNotifications {
   const val ID_RELAUNCH = 9202
   const val ID_FALLBACK = 9203
   const val ID_SNOOZED = 9204
+  const val ID_MISSED = 9205
 
   private const val REQ_FULLSCREEN = 9301
   private const val REQ_RELAUNCH = 9302
@@ -142,6 +143,28 @@ object AlarmNotifications {
       .setOnlyAlertOnce(true)
       .build()
     runCatching { nm(ctx).notify(ID_SNOOZED, n) }
+  }
+
+  fun showMissed(ctx: Context, startedAt: Long) {
+    ensureChannels(ctx)
+    val open = PendingIntent.getActivity(
+      ctx, REQ_OPEN, AlarmLauncher.launchIntent(ctx, fromAlarm = false),
+      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+    val time = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(if (startedAt > 0) startedAt else System.currentTimeMillis()))
+    val n = NotificationCompat.Builder(ctx, CH_SNOOZED)
+      .setSmallIcon(ctx.applicationInfo.icon)
+      .setContentTitle("Missed alarm")
+      .setContentText("Your $time alarm rang for 90 minutes and stopped. It stays set for the next day.")
+      .setStyle(NotificationCompat.BigTextStyle().bigText(
+        "Your $time alarm rang for 90 minutes without the mission being done, so it stopped. It stays set for the next selected day."
+      ))
+      .setCategory(NotificationCompat.CATEGORY_REMINDER)
+      .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+      .setContentIntent(open)
+      .setAutoCancel(true)
+      .build()
+    runCatching { nm(ctx).notify(ID_MISSED, n) }
   }
 
   fun cancelRinging(ctx: Context) {

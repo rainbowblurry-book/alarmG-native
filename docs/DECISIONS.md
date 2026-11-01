@@ -48,6 +48,7 @@ Sources such as `3.md:906` refer to the old chat exports (`docs/chat-history/`),
 | D-33 | **Signing option B:** a new release key, kept only in GitHub Actions secrets (never committed or printed). The old app is uninstalled once. App ID `com.rainbowblurry.wakeupnative` is kept | Test app, not published; simplest secure path | Active |
 | D-34 | **CI trigger:** the workflow file also lives on `main` (GitHub requires that for manual runs); app code never goes to `main` without the user's merge | User decision 2026-11-01 | Active |
 | D-35 | **Settings tab stays reachable while armed** (test alarm, permissions, volume); "Reset all settings" is disabled while armed (it would delete the item/PIN a ringing alarm needs). Setup stays locked while armed | Needed to test the test alarm next to a real alarm | Active |
+| D-36 | **Ring time limit:** a ring session rings nonstop (no quiet gaps) until the mission or a PIN snooze. **90 minutes** after it first started ringing (snoozes included) it stops by itself, posts a **"Missed alarm"** notification, and stays armed for the next day. A ring that starts after the limit (a late snooze ending) still rings at least 5 minutes. Not user-configurable | Avoid endless ringing and battery drain if nobody responds; best effort (user decision 2026-11-01) | Implemented on `feature/ring-time-limit` |
 
 ## Technical
 

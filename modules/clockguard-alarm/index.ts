@@ -23,6 +23,8 @@ export type AlarmState = {
   ringStartedAt: number;
   /** epoch ms of the next scheduled ring; 0 when none (armed + 0 = alarm NOT active) */
   nextTriggerAt: number;
+  /** epoch ms when this ring session first started; ringing stops by itself 90 min later */
+  sessionStartedAt: number;
   volumeBoostEnabled: boolean;
   // TESTING-ONLY START
   isTestRing: boolean;
@@ -76,6 +78,7 @@ const IDLE: AlarmState = {
   snoozeCount: 0,
   ringStartedAt: 0,
   nextTriggerAt: 0,
+  sessionStartedAt: 0,
   volumeBoostEnabled: false,
   // TESTING-ONLY START
   isTestRing: false,
