@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Defs, Ellipse, Line, Path, RadialGradient, Rect, Stop, LinearGradient as SvgLinear } from 'react-native-svg';
 import { DesignPack } from '../theme/packs';
-import { RuledPaper } from './ui';
+import { NotebookPage } from './ui';
 
 const SCANLINES = Array.from({ length: 260 }, (_, i) => i);
 
@@ -32,8 +32,8 @@ export function RingBackdrop({ pack, progress }: { pack: DesignPack; progress: n
         </View>
       );
     case 'paper':
-      // The notebook at night: dark page, faint ruled lines and margin.
-      return <RuledPaper line="#26231F" margin="#3A2C27" gap={38} />;
+      // The notebook at night: dark dot-grid page and a dim margin.
+      return <NotebookPage dot="#2E2A25" margin="#3A2C27" />;
     case 'field': {
       // A sun rising over a hill. The sun climbs with movement.
       const sunCy = 186 - p * 42; // viewBox units (0-200)

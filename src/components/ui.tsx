@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Circle } from 'react-native-svg';
 import { useDesign } from '../context/DesignContext';
 import { BEVEL, DesignPack } from '../theme/packs';
 
@@ -49,14 +50,26 @@ export function bevel(sunken = false): ViewStyle {
 export const SKETCH_RADII = { borderTopLeftRadius: 18, borderTopRightRadius: 6, borderBottomRightRadius: 16, borderBottomLeftRadius: 7 };
 const INK = '#2A2926';
 
-/** Ruled notebook paper with a red margin line (Paper design background). */
-export function RuledPaper({ line = '#D9E0E6', margin = '#E3A49A', gap = 34 }: { line?: string; margin?: string; gap?: number }) {
+/** Left margin of the notebook page; content always starts right of it. */
+export const NOTEBOOK_MARGIN = 34;
+export const RULE = '#C9D6DF';
+
+/**
+ * Dot-grid notebook page (bullet-journal style) with a red margin line.
+ * Dots never cut through letters the way free ruled lines do; the ruled lines
+ * live inside cards, under each row, so text always sits on a line.
+ */
+export function NotebookPage({ dot = '#CDC3AE', margin = '#E3A49A', step = 22 }: { dot?: string; margin?: string; step?: number }) {
+  const cols = Math.ceil(480 / step);
+  const rows = Math.ceil(1000 / step);
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {Array.from({ length: 60 }, (_, i) => (
-        <View key={i} style={{ position: 'absolute', left: 0, right: 0, top: 96 + i * gap, height: 1, backgroundColor: line }} />
-      ))}
-      <View style={{ position: 'absolute', top: 0, bottom: 0, left: 30, width: 1.5, backgroundColor: margin }} />
+      <Svg width="100%" height="100%">
+        {Array.from({ length: rows * cols }, (_, k) => (
+          <Circle key={k} cx={(k % cols) * step + step / 2} cy={Math.floor(k / cols) * step + step / 2} r={1.1} fill={dot} />
+        ))}
+      </Svg>
+      <View style={{ position: 'absolute', top: 0, bottom: 0, left: NOTEBOOK_MARGIN, width: 1.5, backgroundColor: margin }} />
     </View>
   );
 }
@@ -116,21 +129,22 @@ export function Screen({
 }) {
   const { pack } = useDesign();
   const insets = useSafeAreaInsets();
+  const left = pack.chrome === 'sketch' ? { paddingLeft: NOTEBOOK_MARGIN + 12 } : null;
   const body = scroll ? (
     <ScrollView
-      contentContainerStyle={[{ padding: space.md, paddingBottom: insets.bottom + space.xl, gap: space.md }, contentStyle]}
+      contentContainerStyle={[{ padding: space.md, paddingBottom: insets.bottom + space.xl, gap: space.md }, left, contentStyle]}
       showsVerticalScrollIndicator={false}
     >
       {children}
     </ScrollView>
   ) : (
-    <View style={[{ flex: 1, padding: space.md, paddingBottom: insets.bottom + space.md, gap: space.md }, contentStyle]}>
+    <View style={[{ flex: 1, padding: space.md, paddingBottom: insets.bottom + space.md, gap: space.md }, left, contentStyle]}>
       {children}
     </View>
   );
   return (
     <View style={{ flex: 1, backgroundColor: pack.colors.bg, paddingTop: insets.top }}>
-      {pack.chrome === 'sketch' && <RuledPaper />}
+      {pack.chrome === 'sketch' && <NotebookPage />}
       {header}
       {body}
     </View>
@@ -164,7 +178,7 @@ export function Header({ title, onBack, right }: { title: string; onBack?: () =>
     );
   }
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.sm, height: 52, gap: space.xs }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.sm, paddingLeft: pack.chrome === 'sketch' ? NOTEBOOK_MARGIN + 4 : space.sm, height: 52, gap: space.xs }}>
       {onBack ? (
         <Pressable
           onPress={onBack}
@@ -483,8 +497,8 @@ export function Row({
         minHeight: 54,
         paddingVertical: space.sm,
         opacity: disabled ? 0.45 : pressed ? 0.6 : 1,
-        borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth * (pack.chrome === 'bevel' ? 2 : 1),
-        borderBottomColor: pack.chrome === 'bevel' ? BEVEL.shadow : pack.chrome === 'sketch' ? '#D9E0E6' : c.border,
+        borderBottomWidth: pack.chrome === 'sketch' ? 1.2 : last ? 0 : StyleSheet.hairlineWidth * (pack.chrome === 'bevel' ? 2 : 1),
+        borderBottomColor: pack.chrome === 'bevel' ? BEVEL.shadow : pack.chrome === 'sketch' ? RULE : c.border,
       }}
     >
       {icon && <Ionicons name={icon} size={20} color={c.text} />}

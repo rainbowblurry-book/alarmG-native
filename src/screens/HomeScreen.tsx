@@ -6,7 +6,7 @@ import { useSettings } from '../context/SettingsContext';
 import { useWakeFlow } from '../context/WakeFlowContext';
 import { useDesign } from '../context/DesignContext';
 import { BEVEL, DesignPack } from '../theme/packs';
-import { bevel, Chip, HoldButton, onBg, onBgDim, Screen, space, Surface, Txt } from '../components/ui';
+import { bevel, Chip, HoldButton, onBg, onBgDim, RULE, Screen, space, Surface, Txt } from '../components/ui';
 import { FieldHill } from '../components/RingVisuals';
 import Svg, { Path } from 'react-native-svg';
 import TimeSheet from './TimeSheet';
@@ -215,16 +215,16 @@ function Hero({
         <View style={{ backgroundColor: c.surface, borderWidth: 1, borderColor: c.border, paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.md, boxShadow: '0 3px 6px rgba(42, 41, 38, 0.12)' }}>
           {/* tape */}
           <View style={{ position: 'absolute', top: -12, alignSelf: 'center', left: '38%', width: 92, height: 24, backgroundColor: 'rgba(236, 222, 170, 0.75)', transform: [{ rotate: '3deg' }] }} />
-          <View style={{ height: 1.5, backgroundColor: '#E3A49A', position: 'absolute', top: 44, left: 0, right: 0 }} />
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* index-card header rule: the label sits on it */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', borderBottomWidth: 1.5, borderBottomColor: '#E3A49A', marginHorizontal: -space.lg, paddingHorizontal: space.lg, paddingBottom: 2 }}>
             {hand(26, c.textDim, armed ? 'Set for' : 'Wake me at')}
-            {armed && <Ionicons name="lock-closed" size={18} color={c.accent} />}
+            {armed && <Ionicons name="lock-closed" size={18} color={c.accent} style={{ marginBottom: 8 }} />}
           </View>
           {big(c.text)}
           <Svg width="70%" height={12} viewBox="0 0 200 12" preserveAspectRatio="none" style={{ marginTop: -14 }}>
             <Path d="M2 8 C 40 2, 80 11, 120 6 S 180 4, 198 7" stroke={c.accent} strokeWidth={3} fill="none" strokeLinecap="round" />
           </Svg>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: space.md }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: space.md, paddingBottom: 6, borderBottomWidth: 1.2, borderBottomColor: RULE, marginHorizontal: -space.lg, paddingHorizontal: space.lg }}>
             {DAY_SHORT.map((d, i) => {
               const on = repeatDays.includes(i);
               return (
@@ -234,7 +234,11 @@ function Hero({
               );
             })}
           </View>
-          {inText ? <View style={{ alignItems: 'flex-end', marginTop: space.sm }}>{hand(26, armed ? c.accent : c.textDim, inText)}</View> : null}
+          {inText ? (
+            <View style={{ alignItems: 'flex-end', borderBottomWidth: 1.2, borderBottomColor: RULE, marginHorizontal: -space.lg, paddingHorizontal: space.lg }}>
+              {hand(26, armed ? c.accent : c.textDim, inText)}
+            </View>
+          ) : null}
         </View>
       </Pressable>
     );

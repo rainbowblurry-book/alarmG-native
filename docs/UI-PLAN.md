@@ -44,7 +44,7 @@ _Written 2026-11-01 at the end of the engine session. The user approved this pla
 | # | Name | Mode | Mood / palette | Inspired by | Ringing screen |
 |---|---|---|---|---|---|
 | 1 | **Lumen** (replaced Ember, user 2026-11-01: "looks like Claude colours") | dark | graphite #0E0F11, off-white, one volt-lime #D4F25C; Unbounded numerals, Manrope text; bento tiles | modern sport/fintech dashboards | segmented ring (one segment per move) + soft dim volt glow |
-| 2 | Paper (**redone as a handwritten notebook**) | light | ruled cream paper, red margin, graphite ink, red pen, yellow highlighter; Caveat numerals, Patrick Hand text; sticky-note chips, taped index card | paper notebooks | dark notebook page, chalky handwriting, tally marks fill as you move |
+| 2 | Paper (**redone as a handwritten notebook**) | light | dot-grid (bullet-journal) cream page, red margin that content never crosses, ruled lines only under rows inside cards (text always sits on a line), graphite ink, red pen, yellow highlighter; Caveat numerals, Patrick Hand text; sticky-note chips, taped index card | paper notebooks | dark notebook page, chalky handwriting, tally marks fill as you move |
 | 3 | Field | dark | moss green + bone, rounded soft shapes | Headspace calm, but grown-up | progress drawn as a sun rising over a hill (SVG) |
 | 4 | Signal | **retro 90s** (user, 2026-11-01) | teal desktop #008080, grey 3-D chrome #C0C0C0/#808080, VT323 terminal font | 90s desktops, amber CRT terminals | dim amber CRT: scanlines, block progress bar `[████░░]`, terminal text |
 
