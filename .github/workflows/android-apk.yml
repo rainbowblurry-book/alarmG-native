@@ -50,6 +50,13 @@ jobs:
         env:
           CI: 1
 
+      - name: Verify the alarm engine module is linked
+        run: |
+          npx expo-modules-autolinking resolve -p android > "$RUNNER_TEMP/autolinking.txt"
+          grep -q "ClockGuardEngineModule" "$RUNNER_TEMP/autolinking.txt" || { echo "ClockGuardEngine module NOT linked"; exit 1; }
+          grep -q "ClockGuardEnginePackage" "$RUNNER_TEMP/autolinking.txt" || { echo "ClockGuardEngine package NOT linked"; exit 1; }
+          echo "ClockGuardEngine module + package linked."
+
       - name: Prepare signing key (from secrets, never printed)
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
