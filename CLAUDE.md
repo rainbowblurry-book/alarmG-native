@@ -9,6 +9,7 @@ Read before working:
 - [docs/STATUS.md](docs/STATUS.md) — bugs, device-tested vs untested, next steps
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — verified structure and file map
 - [docs/DECISIONS.md](docs/DECISIONS.md) — product/technical decisions and what superseded what
+- [docs/BUILD-AND-INSTALL.md](docs/BUILD-AND-INSTALL.md) — free CI build, signing secrets, install
 - `docs/chat-history/` — archived chats: history, NOT truth. Verify against code.
 
 Rules:
@@ -23,6 +24,8 @@ Rules:
 - Native code (anything under `modules/`, `app.json` plugins/permissions, native packages)
   needs a new APK. There is no OTA update channel, so JS changes also need a new APK.
 - Before pushing: `npx tsc --noEmit`; for native changes also `npx expo prebuild -p android --clean`
-  and check the generated manifest.
+  and check the generated manifest. Batch work; start a CI build only when needed.
+- The alarm engine lives in `modules/clockguard-alarm` (local Expo module "ClockGuardEngine").
+- Test-only code is fenced with `TESTING-ONLY START` / `TESTING-ONLY END`; keep that when editing.
 - Keep docs/STATUS.md current when behaviour or test results change.
 - The user writes informally; infer meaning, be decisive, give plain-language steps.

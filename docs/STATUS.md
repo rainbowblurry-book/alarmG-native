@@ -55,7 +55,8 @@ Root cause: the sound played inside the screen (`expo-audio`), and ring state wa
 - Do Not Disturb policies may block the optional volume change (the alarm then rings at the current volume).
 
 ## One-time setup the user must do
-See the final message on 2026-11-01 / CLAUDE.md. Create 4 GitHub Actions secrets (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`) from a new key made in Codespaces; back the key up; then run the workflow.
+Follow [BUILD-AND-INSTALL.md](BUILD-AND-INSTALL.md): create a new key in the Codespace, add 4 GitHub secrets, back up the key, run the workflow, uninstall the old app, install the APK.
+**No installable APK exists yet**, because the signing secrets don't exist yet.
 
 ## Device test checklist (new engine)
 1. **Auto-open, locked:** arm 2 min ahead, lock the phone, wait. The ringing screen opens by itself.
@@ -75,3 +76,4 @@ See the final message on 2026-11-01 / CLAUDE.md. Create 4 GitHub Actions secrets
 | Run | Commit | What | Result |
 |---|---|---|---|
 | [#1](https://github.com/rainbowblurry-book/alarmG-native/actions/runs/41296161793) | `73e5cb2` (Phase B; old + new engine) | Compile check, no signing secrets | **Success** in 11 min. `clockguard-alarm (1.0.0)` linked; `:clockguard-alarm:compileReleaseKotlin` ran with 0 errors and 0 warnings. The only Kotlin warnings were in the old engine files |
+| [#2](https://github.com/rainbowblurry-book/alarmG-native/actions/runs/41297448823) | `6677b78` (Phase C; new engine only) | Compile check, no signing secrets | **Success** in 14 min. Engine module + package link check passed; `:clockguard-alarm:compileReleaseKotlin` ran with 0 warnings/errors in our code (warnings only in third-party libraries); no RECORD_AUDIO permission present |
