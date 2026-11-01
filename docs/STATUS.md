@@ -43,7 +43,8 @@ Legend:
 - Home without tabs, hold-to-arm / hold-to-cancel, Mission chips (Move · Item · PIN), time/days bottom sheet, grouped Settings, first-launch "Get ready" checklist, crash screen with a Copy button [code].
 - Engine (`modules/clockguard-alarm`) **not changed**. Ringing logic (movement gate, barcode check, PIN check, Back blocking) is the same code with a new look [code].
 - Checked: `tsc` clean, `expo prebuild` OK (engine, svg and clipboard autolinked), every screen of all 4 designs rendered on web with a mocked engine and reviewed [code].
-- **Device test to do (all 4 designs):** arm by holding; cancel by holding; tap the card while armed (must not open); Mission chips disabled while armed; Test alarm → ringing screen: Back does nothing, movement fills, Scan appears only after movement, wrong item rejected, right item disarms; PIN snooze; snoozed screen → Scan now; Exit test. Then re-run the engine checklist above.
+- Time picking: drag the big numbers on Home, or tap them for the design's own picker (arc sliders / tape rulers / sun / LCD ▲▼); the old scroll wheel is gone [code; checked on web with simulated drags].
+- **Device test to do (all 4 designs):** drag the hour and minutes on Home (one haptic click per step), tap the time → picker → Done saves; while armed dragging/tapping does nothing; arm by holding; cancel by holding; tap the card while armed (must not open); Mission chips disabled while armed; Test alarm → ringing screen: Back does nothing, movement fills, Scan appears only after movement, wrong item rejected, right item disarms; PIN snooze; snoozed screen → Scan now; Exit test. Then re-run the engine checklist above.
 
 ## Known limitations (honest)
 - **Force stop** (App info → Force stop) cancels all alarms until the app is opened again. This is an Android rule. **Removing the app from Recents is fine**: the alarm and ringing survive it [device, test 4].

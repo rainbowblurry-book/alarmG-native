@@ -10,6 +10,7 @@ import { bevel, Chip, HoldButton, onBg, onBgDim, RULE, Screen, space, Surface, T
 import { FieldHill } from '../components/RingVisuals';
 import Svg, { Path } from 'react-native-svg';
 import TimeSheet from './TimeSheet';
+import { DragTime, wasJustDragged } from '../components/TimePickers';
 import { armBlockers, DAY_SHORT, describeDays, formatIn, pad2, usePermissions } from '../logic/useReadiness';
 import type { RootStack } from '../navigation/types';
 
@@ -28,7 +29,7 @@ function nextOccurrence(hour: number, minute: number, days: number[], now: Date)
 export default function HomeScreen({ navigation }: NativeStackScreenProps<RootStack, 'Home'>) {
   const { pack } = useDesign();
   const c = pack.colors;
-  const { settings } = useSettings();
+  const { settings, updateSettings } = useSettings();
   const { alarm, arm, cancelAlarm } = useWakeFlow();
   const [perms, refreshPerms] = usePermissions();
   const [now, setNow] = useState(() => new Date());
@@ -68,13 +69,13 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<RootSt
   };
 
   const openTime = () => {
-    if (!armed) setSheetOpen(true);
+    if (!armed && !wasJustDragged()) setSheetOpen(true);
   };
 
   const retro = pack.chrome === 'bevel';
 
   return (
-    <Screen contentStyle={{ flexGrow: 1 }}>
+    <Screen scroll={false}>
       {/* Top bar */}
       <View style={styles.topBar}>
         <Text style={{ fontFamily: retro || pack.chrome === 'sketch' ? pack.fonts.strong : pack.fonts.medium, fontSize: retro ? 28 : pack.chrome === 'sketch' ? 32 : 15, color: onBg(pack), letterSpacing: pack.labelCaps && !retro ? 2 : 0 }}>
@@ -97,7 +98,7 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<RootSt
       </View>
 
       <View style={{ flex: 1, justifyContent: 'center', minHeight: 260 }}>
-        <Hero pack={pack} time={timeText} days={daysText} inText={inText} armed={armed} repeatDays={settings.repeatDays} onPress={openTime} />
+        <Hero pack={pack} hour={settings.alarmHour} minute={settings.alarmMinute} onTimeChange={(h, m) => updateSettings({ alarmHour: h, alarmMinute: m })} time={timeText} days={daysText} inText={inText} armed={armed} repeatDays={settings.repeatDays} onPress={openTime} />
       </View>
 
 
@@ -175,8 +176,14 @@ function Hero({
   armed,
   repeatDays,
   onPress,
+  hour,
+  minute,
+  onTimeChange,
 }: {
   pack: DesignPack;
+  hour: number;
+  minute: number;
+  onTimeChange: (h: number, m: number) => void;
   time: string;
   days: string;
   inText: string;
@@ -194,14 +201,17 @@ function Hero({
       </Txt>
     </View>
   );
+  // The big time: drag the hour or minutes up/down to change it (locked while armed).
   const big = (color: string, size = pack.heroSize) => (
-    <Text
+    <DragTime
+      hour={hour}
+      minute={minute}
+      locked={armed}
+      onChange={onTimeChange}
+      onTap={onPress}
+      activeColor={pack.id === 'signal' ? '#FFD36A' : c.accent}
       style={{ fontFamily: pack.fonts.display, fontSize: size, lineHeight: size * 1.08, color, fontVariant: ['tabular-nums'], letterSpacing: pack.chrome === 'sketch' ? 0 : pack.id === 'lumen' ? -2 : -1 }}
-      adjustsFontSizeToFit
-      numberOfLines={1}
-    >
-      {time}
-    </Text>
+    />
   );
 
   if (pack.id === 'paper') {

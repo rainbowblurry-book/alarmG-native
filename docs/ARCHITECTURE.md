@@ -51,11 +51,12 @@ src/components/ui.tsx            design-system primitives (Txt, Screen, Header, 
 src/components/RingVisuals.tsx   per-design ringing visuals (SVG): glow, dial, sun over hill, CRT
 src/components/ScannerModal.tsx  camera barcode scanner (caller owns the scan logic)
 src/components/ErrorBoundary.tsx crash screen with Copy button
-src/components/WatchRotaryWheel.tsx  time wheel (optional per-pack styling props)
+src/components/TimePickers.tsx   DragTime (drag the big hour/minutes on Home) + one picker per design:
+                                 Lumen arc sliders, Paper tape rulers, Field sun + slider, Signal LCD ▲▼
 src/logic/pin.ts, useReadiness.ts  PIN rules; permissions, arming gates, day/time helpers
 src/navigation/AppNavigator.tsx  native stack: Welcome, Home, Item, Pin, Movement, Settings, Readiness, Design
 src/screens/HomeScreen.tsx       next-alarm card (per-design layout), Mission chips, hold-to-arm
-src/screens/TimeSheet.tsx        bottom sheet: wheels + repeat days
+src/screens/TimeSheet.tsx        bottom sheet: the design's picker + repeat days (saved when it closes)
 src/screens/MissionScreens.tsx   Item (scan / fallback), PIN (+ cruelty mode), Movement
 src/screens/SettingsScreens.tsx  Settings list, Phone readiness, first-launch checklist, Design switcher
 src/screens/RingingScreen.tsx    mission UI (movement → scan) and PIN snooze; Back blocked

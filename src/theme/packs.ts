@@ -149,7 +149,7 @@ export const PACKS: Record<PackId, DesignPack> = {
     labelCaps: false,
     radius: { card: 4, control: 14, chip: 4 },
     chrome: 'sketch',
-    heroSize: 128,
+    heroSize: 112,
     marker: '#F6DF6B',
   },
 

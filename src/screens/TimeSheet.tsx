@@ -1,13 +1,13 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useSettings } from '../context/SettingsContext';
 import { useWakeFlow } from '../context/WakeFlowContext';
 import { useDesign } from '../context/DesignContext';
-import WatchRotaryWheel from '../components/WatchRotaryWheel';
+import { SignaturePicker } from '../components/TimePickers';
 import { bevel, Btn, Sheet, space, Txt } from '../components/ui';
 import { DAY_NAMES, DAY_SHORT } from '../logic/useReadiness';
 
-/** Bottom sheet: time wheels + repeat days. Never opened while armed (D-09). */
+/** Bottom sheet: the design's own time picker + repeat days. Never opened while armed (D-09). */
 export default function TimeSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { pack } = useDesign();
   const c = pack.colors;
@@ -22,32 +22,21 @@ export default function TimeSheet({ visible, onClose }: { visible: boolean; onCl
     updateSettings({ repeatDays: has ? settings.repeatDays.filter((d) => d !== i) : [...settings.repeatDays, i].sort() });
   };
 
-  const wheel = (side: 'left' | 'right') => (
-    <WatchRotaryWheel
-      value={side === 'left' ? settings.alarmHour : settings.alarmMinute}
-      min={0}
-      max={side === 'left' ? 23 : 59}
-      onChange={(v) => updateSettings(side === 'left' ? { alarmHour: v } : { alarmMinute: v })}
-      side={side}
-      disabled={locked}
-      accentColor={retro ? '#000000' : c.accent}
-      textColor={c.text}
-      textSecondaryColor={c.textDim}
-      backgroundColor={c.surface}
-      cardColor={retro ? '#FFFFFF' : c.surfaceAlt}
-      borderColor={retro ? '#808080' : c.border}
-      notchColor={c.border}
-      fontFamily={pack.fonts.display}
-      glow={pack.mode === 'dark'}
-    />
-  );
+  // Draft while the sheet is open; saved when it closes (fewer storage writes while dragging).
+  const [draft, setDraft] = useState({ h: settings.alarmHour, m: settings.alarmMinute });
+  useEffect(() => {
+    if (visible) setDraft({ h: settings.alarmHour, m: settings.alarmMinute });
+  }, [visible]);
+  const close = () => {
+    if (!locked && (draft.h !== settings.alarmHour || draft.m !== settings.alarmMinute)) {
+      updateSettings({ alarmHour: draft.h, alarmMinute: draft.m });
+    }
+    onClose();
+  };
 
   return (
-    <Sheet visible={visible} onClose={onClose} title="Alarm time">
-      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10 }}>
-        {wheel('left')}
-        {wheel('right')}
-      </View>
+    <Sheet visible={visible} onClose={close} title="Alarm time">
+      <SignaturePicker pack={pack} hour={draft.h} minute={draft.m} onChange={(h, m) => setDraft({ h, m })} />
       <View style={{ flexDirection: 'row', gap: 6 }}>
         {DAY_SHORT.map((d, i) => {
           const on = settings.repeatDays.includes(i);
@@ -80,7 +69,7 @@ export default function TimeSheet({ visible, onClose }: { visible: boolean; onCl
           Pick at least one day
         </Txt>
       )}
-      <Btn title="Done" onPress={onClose} />
+      <Btn title="Done" onPress={close} />
       <View style={{ height: space.xs }} />
     </Sheet>
   );
