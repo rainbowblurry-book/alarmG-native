@@ -1,6 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import HomeScreen from '../screens/HomeScreen';
+import IntroScreen from '../screens/IntroScreen';
 import { ItemScreen, MovementScreen, PinScreen } from '../screens/MissionScreens';
 import { DesignScreen, ReadinessScreen, SettingsScreen, WelcomeScreen } from '../screens/SettingsScreens';
 import { useDesign } from '../context/DesignContext';
@@ -17,7 +18,7 @@ const Stack = createNativeStackNavigator<RootStack>();
 export default function AppNavigator({ initialRoute }: { initialRoute?: keyof RootStack }) {
   const { pack, onboarded } = useDesign();
   const { alarm } = useWakeFlow();
-  const first: keyof RootStack = initialRoute ?? (!onboarded && !alarm.armed ? 'Welcome' : 'Home');
+  const first: keyof RootStack = initialRoute ?? (!onboarded && !alarm.armed ? 'Intro' : 'Home');
 
   return (
     <Stack.Navigator
@@ -28,6 +29,7 @@ export default function AppNavigator({ initialRoute }: { initialRoute?: keyof Ro
         contentStyle: { backgroundColor: pack.colors.bg },
       }}
     >
+      <Stack.Screen name="Intro" component={IntroScreen} />
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="Item" component={ItemScreen} />

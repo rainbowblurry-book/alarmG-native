@@ -56,6 +56,7 @@ Sources such as `3.md:906` refer to the old chat exports (`docs/chat-history/`),
 | D-42 | **Type the time:** tapping the big numbers on Home opens the sheet ready to type (number keyboard, e.g. 0645); tapping the time inside any picker also switches to typing; a link switches back to the design's picker | User 2026-11-01 | Implemented on `feature/ui-variants` |
 | D-43 | **Snooze length is a setting:** 1–20 min, default 5 (PIN page). Cruelty mode halves from that length, floor 20 s. The engine already accepts 10 s–60 min, so no native change | User 2026-11-01 | Implemented on `feature/ui-variants` |
 | D-44 | **Movement target 10–500, default 15** (was 5–50). Stored values under 10 fall back to 15. Stepper: hold to run (speeds up) or tap the number to type. Ringing visuals cap at 50 marks/segments and scale | User 2026-11-01 | Implemented on `feature/ui-variants` |
+| D-45 | **First-launch intro:** 4 short skippable cards (set time · move + scan · PIN only snoozes · hold to arm), then the "Get ready" checklist. Replay from Settings → How it works. Wording never promises more than the engine does | User 2026-11-01 asked for a walkthrough like normal apps | Implemented on `feature/ui-variants` |
 | D-39 | **Arming and cancelling are hold-to-confirm** (~0.9 s). Screen readers get a direct "activate" action. Arming gates unchanged (D-25, D-29) | Prevent accidental arming/cancelling | Implemented on `feature/ui-variants` |
 
 ## Technical

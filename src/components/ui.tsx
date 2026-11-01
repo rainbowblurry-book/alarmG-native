@@ -723,7 +723,7 @@ export function Stepper({ value, onChange, min, max, step, unit }: { value: numb
         {btn('add', 1, `Increase ${unit}`)}
       </View>
       <Txt variant="caption" style={{ textAlign: 'center' }}>
-        {min}–{max} · hold to run, tap the number to type
+        {min}–{max} · tap the number to type
       </Txt>
     </View>
   );

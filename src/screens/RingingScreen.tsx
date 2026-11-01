@@ -309,7 +309,7 @@ export default function RingingScreen() {
         />
 
         <Modal visible={isKeypadOpen && isRinging} animationType="fade" transparent onRequestClose={() => setIsKeypadOpen(false)}>
-          <View style={[styles.keypadOverlay, { backgroundColor: `${r.bg}F2` }]}>
+          <View style={[styles.keypadOverlay, { backgroundColor: r.bg }]}>
             <Text style={[{ color: r.textDim, letterSpacing: 2 }, T(12)]}>{say(`Snooze ${snoozeLabel}`)}</Text>
             <View style={styles.dots} accessibilityLabel={`${enteredPin.length} of 10 digits entered`}>
               {Array.from({ length: 10 }, (_, i) => (

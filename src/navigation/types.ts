@@ -1,4 +1,5 @@
 export type RootStack = {
+  Intro: { replay?: boolean } | undefined;
   Welcome: undefined;
   Home: undefined;
   Item: undefined;

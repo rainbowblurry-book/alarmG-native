@@ -85,6 +85,11 @@ export function SettingsScreen({ navigation }: NativeStackScreenProps<RootStack,
       </Surface>
       {/* TESTING-ONLY END */}
 
+      <SectionLabel>Help</SectionLabel>
+      <Surface>
+        <Row icon="help-circle-outline" title="How it works" onPress={() => navigation.navigate('Intro', { replay: true })} last />
+      </Surface>
+
       <SectionLabel>Reset</SectionLabel>
       <Surface>
         <Row

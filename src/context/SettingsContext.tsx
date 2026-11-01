@@ -1,7 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { THEME } from '../theme/themes';
 import { setVolumeBoostEnabled } from '../../modules/clockguard-alarm';
 
 /**
@@ -126,8 +125,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   if (isLoading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: THEME.background }]}>
-        <Text style={[styles.loadingText, { color: THEME.text }]}>Loading…</Text>
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading…</Text>
       </View>
     );
   }
@@ -153,6 +152,7 @@ export function isMissionReady(s: AlarmSettings): boolean {
 }
 
 const styles = StyleSheet.create({
-  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  loadingText: { fontSize: 16 },
+  // Neutral (shown for a split second before the design is known).
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0E0F11' },
+  loadingText: { fontSize: 16, color: '#9A9BA2' },
 });
