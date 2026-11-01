@@ -46,7 +46,7 @@ _Written 2026-11-01 at the end of the engine session. The user approved this pla
 | 1 | Ember | dark | warm charcoal, ember orange, soft glow | Hatch sunrise lamps, bedside clocks | slow dim "sunrise" glow that warms as movement fills |
 | 2 | Paper | light | warm off-white, ink black, one signal red, big printed numerals | Braun clocks, Things 3 | switches to sepia-dark, never bright white |
 | 3 | Field | dark | moss green + bone, rounded soft shapes | Headspace calm, but grown-up | progress drawn as a sun rising over a hill (SVG) |
-| 4 | Signal | dark mono | true black, bone white, one amber, dot-matrix numerals, fewest words | Nothing Phone, field instruments | pure numbers + a single amber pulse |
+| 4 | Signal | **retro 90s** (user, 2026-11-01) | teal desktop #008080, grey 3-D chrome #C0C0C0/#808080, VT323 terminal font | 90s desktops, amber CRT terminals | dim amber CRT: scanlines, block progress bar `[████░░]`, terminal text |
 
 ## Self-checks before giving the user an APK
 - `npx tsc --noEmit`; `npx expo prebuild -p android --clean` (check the manifest). New native libs → confirm autolinking.
@@ -67,3 +67,14 @@ No dev client or Metro (the old tunnel/ngrok trouble). If the app breaks: reinst
 - Force stop kills alarms (Android rule); Recents is fine. Keep Battery on Unrestricted.
 - Remove the `TESTING-ONLY` code when the UI is final.
 - Ideas for later: multiple alarms, mission difficulty, first-run guide (now in plan), low-battery warning.
+
+## Build notes (2026-11-01, after "go")
+- Mix is now 1 light (Paper), 2 dark (Ember, Field), 1 retro (Signal). All ringing/snooze screens are dim.
+- Libraries added (all free): react-native-svg, @react-navigation/native-stack, expo-clipboard, Google Fonts (DM Sans, Fraunces, Archivo, Nunito, VT323; all OFL). Reanimated/gesture-handler were **not** needed (RN Animated is enough), so less native risk.
+- Web preview (dev-only): `npx expo export -p web`, then open `/?design=ember&screen=Home&state=idle|armed|blocked|ringing|scan|snoozed&perms=ok|missing&sheet=1`.
+
+### Colour notes (sources checked on the web)
+- Dark designs use warm/tinted near-black instead of #000 and off-white text instead of #FFF (Material dark-theme guidance: https://m2.material.io/design/color/dark-theme).
+- Signal: Windows-95-era desktop teal #008080 and 3-D greys #C0C0C0 / #808080 (Wine system-colour table, colorswall); amber CRT phosphor ≈ #FFB000, dimmed for ringing.
+- Field: forest/moss + cream direction (moss ≈ #52796F/#8A9A5B, cream #F0EAD6), tuned for contrast.
+- Contrast checked with a WCAG script: body text ≥ 4.5:1 on its surface in every pack; ringing text kept ~8–10:1 (readable, not harsh).

@@ -22,7 +22,7 @@ There is one alarm with repeat days (Sun=0 … Sat=6).
 
 ## 3. File map
 ```
-App.tsx                       Fonts, providers, notification-permission request, wheel-time sync;
+App.tsx                       Fonts, providers, error boundary, notification-permission request, wheel-time sync;
                               renders RingingScreen whenever the engine is not idle
 app.json                      Expo config: expo-camera (no mic), expo-font, withReleaseSigning
 plugins/withReleaseSigning.js Release signing from CI env vars (no keys in the repo)
@@ -43,12 +43,23 @@ modules/clockguard-alarm/     THE ALARM ENGINE (local Expo module "ClockGuardEng
     ClockGuardEngineModule.kt   JS functions + onStateChange event
 src/context/SettingsContext.tsx  user prefs + mission setup (AsyncStorage '@wakeup_settings')
 src/context/WakeFlowContext.tsx  mirrors native engine state; movement progress (UI only)
-src/context/ThemeContext.tsx     fixed Minimal theme (src/theme/themes.ts)
-src/screens/AlarmScreen.tsx      wheels, days, Arm/Cancel, "before you can arm", permission fixes
-src/screens/SetupScreen.tsx      register item (camera or manual), PIN, movement, cruelty mode
-src/screens/SettingsScreen.tsx   phone-settings status, volume option, TEST alarm, reset
+src/context/DesignContext.tsx    active design pack + first-launch flag (AsyncStorage '@clockguard_ui')
+src/theme/packs.ts               ALL design tokens: 4 packs (colours, dim ring palette, fonts, radius, chrome),
+                                 pack registry (tier) + isPackUnlocked()
+src/components/ui.tsx            design-system primitives (Txt, Screen, Header, Surface, Btn, HoldButton,
+                                 Chip, Row, Toggle, InfoTip, Stepper, Sheet)
+src/components/RingVisuals.tsx   per-design ringing visuals (SVG): glow, dial, sun over hill, CRT
+src/components/ScannerModal.tsx  camera barcode scanner (caller owns the scan logic)
+src/components/ErrorBoundary.tsx crash screen with Copy button
+src/components/WatchRotaryWheel.tsx  time wheel (optional per-pack styling props)
+src/logic/pin.ts, useReadiness.ts  PIN rules; permissions, arming gates, day/time helpers
+src/navigation/AppNavigator.tsx  native stack: Welcome, Home, Item, Pin, Movement, Settings, Readiness, Design
+src/screens/HomeScreen.tsx       next-alarm card (per-design layout), Mission chips, hold-to-arm
+src/screens/TimeSheet.tsx        bottom sheet: wheels + repeat days
+src/screens/MissionScreens.tsx   Item (scan / fallback), PIN (+ cruelty mode), Movement
+src/screens/SettingsScreens.tsx  Settings list, Phone readiness, first-launch checklist, Design switcher
 src/screens/RingingScreen.tsx    mission UI (movement → scan) and PIN snooze; Back blocked
-src/components/WatchRotaryWheel.tsx  time wheel
+src/preview/PreviewApp.tsx       TESTING-ONLY web preview with a mocked engine (screenshots)
 docs/                            STATUS, DECISIONS, BUILD-AND-INSTALL, this file
 ```
 

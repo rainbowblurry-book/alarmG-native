@@ -78,7 +78,7 @@ type SettingsContextType = {
   resetSettings: () => void;
 };
 
-const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
+export const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<AlarmSettings>(DEFAULT_SETTINGS);

@@ -37,7 +37,7 @@ type WakeFlowContextType = {
   // TESTING-ONLY END
 };
 
-const WakeFlowContext = createContext<WakeFlowContextType | undefined>(undefined);
+export const WakeFlowContext = createContext<WakeFlowContextType | undefined>(undefined);
 
 export function WakeFlowProvider({ children }: { children: ReactNode }) {
   const [alarm, setAlarm] = useState<AlarmState>(() => Alarm.getState());

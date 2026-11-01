@@ -1,29 +1,35 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Pressable, Modal, BackHandler, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useCameraPermissions } from 'expo-camera';
 import { Accelerometer } from 'expo-sensors';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSettings } from '../context/SettingsContext';
 import { useWakeFlow, snoozeDurationSeconds } from '../context/WakeFlowContext';
-import { useTheme } from '../context/ThemeContext';
-import { ThemeConfig, SEMANTIC_COLORS } from '../theme/themes';
+import { useDesign } from '../context/DesignContext';
+import { MoveProgress, RingBackdrop } from '../components/RingVisuals';
+import ScannerModal from '../components/ScannerModal';
 
 /**
  * Shown whenever the native engine is ringing or snoozed. Sound, vibration,
  * volume, wake-up and lock-screen display are all handled natively
  * (modules/clockguard-alarm), so closing or hiding this screen never silences
  * the alarm. This screen only runs the mission and then calls disarm()/snooze().
+ *
+ * UI redesign: only the presentation changed. The mission logic below (movement
+ * gate, barcode check, PIN check, Back blocking) is the same as before.
+ * Every design uses its dim `ring` palette here: no white, no red.
  */
 export default function RingingScreen() {
   const insets = useSafeAreaInsets();
   const { settings } = useSettings();
-  const { theme } = useTheme();
+  const { pack } = useDesign();
+  const r = pack.ring;
+  const f = pack.fonts;
+  const retro = pack.chrome === 'bevel';
   const { alarm, movementProgress, incrementMovement, snooze, disarm, stopTestRing } = useWakeFlow();
 
-  const styles = createStyles(theme);
   const isRinging = alarm.state === 'ringing';
 
   const [now, setNow] = useState(() => Date.now());
@@ -108,9 +114,9 @@ export default function RingingScreen() {
     setIsScannerOpen(true);
   };
 
-  const handleDisarmBarcodeScanned = (result: { data: string }) => {
+  const handleDisarmBarcodeScanned = (data: string) => {
     if (scanLockRef.current) return;
-    const scanned = result.data.trim();
+    const scanned = data.trim();
     if (!scanned) return;
 
     scanLockRef.current = true;
@@ -160,351 +166,229 @@ export default function RingingScreen() {
   const timeFormatted = new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
   const snoozeLeft = Math.max(0, Math.round((alarm.snoozeUntil - now) / 1000));
   const snoozeTimeFormatted = `${String(Math.floor(snoozeLeft / 60)).padStart(2, '0')}:${String(snoozeLeft % 60).padStart(2, '0')}`;
+  const snoozeLabel = nextSnoozeSeconds % 60 === 0 ? `${nextSnoozeSeconds / 60} min` : `${nextSnoozeSeconds}s`;
+  const itemName = settings.wakeItemName || 'your item';
+  const progress = settings.movementEnabled ? Math.min(1, movementProgress / settings.movementTarget) : 1;
+
+  // Per-design text casing on the ringing screen (Signal speaks like a terminal).
+  const say = (s: string) => (retro ? s.toUpperCase() : s);
+  const T = (size: number) => ({ fontFamily: retro ? f.display : f.body, fontSize: retro ? size * 1.35 : size });
+
+  const mainButton = (label: string, onPress: () => void, a11y: string) => (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={a11y}
+      style={({ pressed }) => [
+        styles.mainButton,
+        retro
+          ? { borderWidth: 2, borderColor: r.accent, backgroundColor: pressed ? r.track : 'transparent', borderRadius: 0 }
+          : { backgroundColor: r.accent, opacity: pressed ? 0.8 : 1, borderRadius: pack.radius.control === 999 ? 32 : Math.max(pack.radius.control, 6) },
+      ]}
+    >
+      <Ionicons name={retro ? 'scan-sharp' : 'scan'} size={20} color={retro ? r.accent : r.onAccent} />
+      <Text style={{ color: retro ? r.accent : r.onAccent, fontFamily: retro ? f.display : f.strong, fontSize: retro ? 26 : 17 }}>{label}</Text>
+    </Pressable>
+  );
 
   return (
-    <LinearGradient colors={theme.ringingGradient} style={styles.gradientContainer}>
-      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+    <View style={{ flex: 1, backgroundColor: r.bg }}>
+      <RingBackdrop pack={pack} progress={isRinging ? progress : 0} />
+      <View style={[styles.container, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 8 }]}>
         {/* TESTING-ONLY START: test ring banner + exit (only ever stops a TEST ring) */}
         {alarm.isTestRing && (
-          <View style={styles.testBanner}>
-            <Text style={styles.testBannerText}>TEST alarm. Your real alarm is not affected.</Text>
-            <Pressable onPress={stopTestRing} accessibilityLabel="Exit test alarm" style={styles.testExitButton}>
-              <Text style={styles.testExitText}>Exit test</Text>
+          <View style={[styles.testBanner, { borderColor: r.track, backgroundColor: `${r.track}CC` }]}>
+            <Ionicons name="flask-outline" size={16} color={r.textDim} />
+            <Text style={[{ flex: 1, color: r.text }, T(13)]}>{say('Test alarm. Real alarm not affected.')}</Text>
+            <Pressable onPress={stopTestRing} accessibilityRole="button" accessibilityLabel="Exit test alarm" hitSlop={8} style={[styles.testExit, { borderColor: r.textDim }]}>
+              <Text style={[{ color: r.text }, T(13)]}>{say('Exit test')}</Text>
             </Pressable>
           </View>
         )}
         {/* TESTING-ONLY END */}
+
         {isRinging ? (
           <>
-            <View style={styles.topSection}>
-              <View style={styles.statusPill}>
-                <View style={styles.statusDot} />
-                <Text style={styles.statusPillText}>Alarm active</Text>
-              </View>
-              <Text style={styles.clockText}>{timeFormatted}</Text>
-              <Text style={styles.subText}>
-                Scan <Text style={styles.subTextBold}>{settings.wakeItemName || 'your registered item'}</Text> to
-                disarm
+            <View style={styles.top}>
+              <Text style={[{ color: r.textDim, letterSpacing: 2 }, T(12)]}>{retro ? '> WAKE UP_' : pack.labelCaps ? 'WAKE UP' : 'Wake up'}</Text>
+              <Text style={{ fontFamily: f.display, fontSize: retro ? 128 : 96, lineHeight: retro ? 120 : 104, color: r.text, fontVariant: ['tabular-nums'], letterSpacing: pack.id === 'paper' ? -3 : -1 }}>
+                {timeFormatted}
               </Text>
             </View>
 
-            <View style={styles.middleSection}>
-              {settings.movementEnabled && (
-                <View style={styles.card}>
-                  <View style={styles.cardHeaderRow}>
-                    <View style={[styles.iconBadge, { backgroundColor: `${theme.accent}30` }]}>
-                      <Ionicons name="walk" size={16} color={theme.accent} />
-                    </View>
-                    <Text style={styles.cardTitle}>Physical movement</Text>
-                  </View>
-
-                  {sensorAvailable ? (
-                    <>
-                      <Text style={styles.cardSubtitle}>
-                        {movementProgress} / {settings.movementTarget} movements
+            <View style={styles.middle}>
+              {!isMovementComplete ? (
+                sensorAvailable ? (
+                  <>
+                    <MoveProgress pack={pack} count={movementProgress} target={settings.movementTarget} />
+                    <Text style={[{ color: r.textDim, textAlign: 'center' }, T(15)]}>{say('Step 1 · Get up and move')}</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={[{ color: r.textDim, textAlign: 'center' }, T(14)]}>{say('Motion sensor unavailable')}</Text>
+                    <Pressable
+                      style={({ pressed }) => [styles.fallback, { borderColor: r.textDim, opacity: pressed ? 0.6 : 1 }]}
+                      onPress={() => incrementMovement(settings.movementTarget)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Count movement, sensor unavailable"
+                    >
+                      <Text style={[{ color: r.text }, T(15)]}>
+                        {say('Tap to count')} {movementProgress}/{settings.movementTarget}
                       </Text>
-                      <View style={styles.progressTrack}>
-                        <View
-                          style={[
-                            styles.progressFill,
-                            { width: `${Math.min(100, (movementProgress / settings.movementTarget) * 100)}%` },
-                          ]}
-                        />
-                      </View>
-                    </>
-                  ) : (
-                    <>
-                      <Text style={styles.cardSubtitle}>Motion sensor unavailable. Use manual fallback.</Text>
-                      <Pressable
-                        style={styles.fallbackButton}
-                        onPress={() => incrementMovement(settings.movementTarget)}
-                        accessibilityLabel="Count movement, sensor unavailable"
-                      >
-                        <Text style={styles.fallbackButtonText}>
-                          Tap to count movement ({movementProgress}/{settings.movementTarget})
-                        </Text>
-                      </Pressable>
-                    </>
-                  )}
+                    </Pressable>
+                  </>
+                )
+              ) : (
+                <View style={{ alignItems: 'center', gap: 8 }}>
+                  <Ionicons name={retro ? 'barcode-sharp' : 'barcode-outline'} size={64} color={r.accent} />
+                  <Text style={[{ color: r.text, textAlign: 'center' }, T(18)]}>
+                    {say(settings.movementEnabled ? 'Step 2 · ' : '')}
+                    {say(`Scan ${itemName}`)}
+                  </Text>
                 </View>
               )}
 
               {wrongBarcodeMessage && (
-                <View style={styles.errorBanner}>
-                  <Ionicons name="close-circle" size={16} color={SEMANTIC_COLORS.error} />
-                  <Text style={styles.errorBannerText}>{wrongBarcodeMessage}</Text>
-                </View>
+                <Text style={[{ color: r.accent, textAlign: 'center' }, T(14)]}>{say(wrongBarcodeMessage)}</Text>
               )}
             </View>
 
-            <View style={styles.bottomSection}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.scanButton,
-                  { backgroundColor: theme.accent },
-                  !isMovementComplete && styles.scanButtonDisabled,
-                  pressed && isMovementComplete && styles.pressed,
-                ]}
-                onPress={handleOpenDisarmScanner}
-                disabled={!isMovementComplete}
-                accessibilityLabel="Scan to disarm"
-              >
-                <Ionicons name="scan" size={18} color={theme.accentText} />
-                <Text style={styles.scanButtonText}>
-                  {isMovementComplete ? 'Scan to disarm' : 'Complete movement first'}
-                </Text>
-              </Pressable>
-
+            <View style={styles.bottom}>
+              {isMovementComplete && mainButton(say(`Scan ${itemName}`), handleOpenDisarmScanner, 'Scan to disarm')}
               {settings.snoozePin.length === 10 && (
-                <Pressable
-                  style={({ pressed }) => [styles.snoozeButton, pressed && styles.pressed]}
-                  onPress={() => setIsKeypadOpen(true)}
-                  accessibilityLabel="Snooze with PIN"
-                >
-                  <Ionicons name="moon-outline" size={16} color={theme.accent} />
-                  <Text style={styles.snoozeButtonText}>Snooze with PIN ({nextSnoozeSeconds % 60 === 0 ? `${nextSnoozeSeconds / 60} min` : `${nextSnoozeSeconds}s`})</Text>
+                <Pressable onPress={() => setIsKeypadOpen(true)} accessibilityRole="button" accessibilityLabel="Snooze with PIN" hitSlop={8} style={styles.quietLink}>
+                  <Ionicons name={retro ? 'moon-sharp' : 'moon-outline'} size={14} color={r.textDim} />
+                  <Text style={[{ color: r.textDim }, T(14)]}>{say(`Snooze with PIN · ${snoozeLabel}`)}</Text>
                 </Pressable>
               )}
-
-              {settings.crueltyModeEnabled && (
-                <View style={styles.crueltyHint}>
-                  <Text style={styles.crueltyHintText}>Cruelty mode is on: each snooze is half as long</Text>
-                </View>
-              )}
+              {settings.crueltyModeEnabled && <Text style={[{ color: r.textDim, textAlign: 'center', opacity: 0.8 }, T(12)]}>{say('Cruelty mode: each snooze is half as long')}</Text>}
             </View>
           </>
         ) : (
           <>
-            <View style={styles.topSection}>
-              <View style={[styles.statusPill, styles.statusPillSnooze]}>
-                <Ionicons name="moon" size={13} color={theme.accent} />
-                <Text style={styles.statusPillText}>Snoozed · #{alarm.snoozeCount}</Text>
-              </View>
-              <Text style={styles.snoozeCountdownText}>{snoozeTimeFormatted}</Text>
-              <Text style={styles.subText}>Alarm will ring again in</Text>
-              {settings.crueltyModeEnabled && (
-                <View style={styles.crueltyHint}>
-                  <Text style={styles.crueltyHintText}>Next snooze will be {nextSnoozeSeconds}s</Text>
-                </View>
-              )}
+            <View style={styles.top}>
+              <Text style={[{ color: r.textDim, letterSpacing: 2 }, T(12)]}>
+                {say(`Snoozed · #${alarm.snoozeCount}`)}
+              </Text>
             </View>
-
-            <View style={styles.middleSection}>
-              {wrongBarcodeMessage && (
-                <View style={styles.errorBanner}>
-                  <Ionicons name="close-circle" size={16} color={SEMANTIC_COLORS.error} />
-                  <Text style={styles.errorBannerText}>{wrongBarcodeMessage}</Text>
-                </View>
-              )}
+            <View style={styles.middle}>
+              <Text style={{ fontFamily: f.display, fontSize: retro ? 140 : 104, color: r.text, fontVariant: ['tabular-nums'] }}>{snoozeTimeFormatted}</Text>
+              <Text style={[{ color: r.textDim }, T(15)]}>
+                {say('Rings again at')} {new Date(alarm.snoozeUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+              </Text>
+              {settings.crueltyModeEnabled && <Text style={[{ color: r.textDim }, T(12)]}>{say(`Next snooze: ${nextSnoozeSeconds}s`)}</Text>}
+              {wrongBarcodeMessage && <Text style={[{ color: r.accent, textAlign: 'center' }, T(14)]}>{say(wrongBarcodeMessage)}</Text>}
             </View>
-
-            <View style={styles.bottomSection}>
-              <Pressable
-                style={({ pressed }) => [styles.scanButton, { backgroundColor: theme.accent }, pressed && styles.pressed]}
-                onPress={handleOpenDisarmScanner}
-                accessibilityLabel="Scan to disarm now"
-              >
-                <Ionicons name="scan" size={18} color={theme.accentText} />
-                <Text style={styles.scanButtonText}>Scan to disarm now</Text>
-              </Pressable>
-            </View>
+            <View style={styles.bottom}>{mainButton(say('Scan now'), handleOpenDisarmScanner, 'Scan to disarm now')}</View>
           </>
         )}
 
-        <Modal
+        <ScannerModal
           visible={isScannerOpen}
-          animationType="slide"
-          transparent={false}
-          onRequestClose={() => setIsScannerOpen(false)}
-        >
-          <View style={[styles.modalContainer, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-            {!permission?.granted ? (
-              <View style={styles.permissionContainer}>
-                <Text style={styles.permissionTitle}>Camera permission required</Text>
-                <Text style={styles.permissionText}>Camera access is needed to scan your wake-up item.</Text>
-                <View style={styles.modalFooter}>
-                  <Pressable style={styles.cancelButton} onPress={() => requestPermission()} accessibilityLabel="Allow camera">
-                    <Text style={[styles.cancelButtonText, { color: theme.accent }]}>Allow camera</Text>
-                  </Pressable>
-                  <Pressable style={styles.cancelButton} onPress={() => setIsScannerOpen(false)} accessibilityLabel="Cancel barcode scanning">
-                    <Text style={styles.cancelButtonText}>Cancel</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ) : (
-              <View style={styles.cameraWrapper}>
-                <CameraView
-                  style={StyleSheet.absoluteFill}
-                  facing="back"
-                  barcodeScannerSettings={{
-                    barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128', 'code39', 'qr'],
-                  }}
-                  onBarcodeScanned={handleDisarmBarcodeScanned}
-                />
-                <View style={styles.cameraOverlay} pointerEvents="box-none">
-                  <View style={styles.cameraHeaderBox}>
-                    <Text style={styles.cameraHeaderText}>Scan {settings.wakeItemName || 'your item'}</Text>
-                    <Text style={styles.cameraSubHeaderText}>Position the barcode in the center</Text>
-                  </View>
-                  <View style={styles.cameraFooter}>
-                    <Pressable style={styles.cancelButton} onPress={() => setIsScannerOpen(false)} accessibilityLabel="Cancel barcode scanning">
-                      <Text style={styles.cancelButtonText}>Cancel</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              </View>
-            )}
-          </View>
-        </Modal>
-
-        <Modal
-          visible={isKeypadOpen && isRinging}
-          animationType="fade"
-          transparent={true}
-          onRequestClose={() => setIsKeypadOpen(false)}
-        >
-          <View style={styles.keypadOverlay}>
-            <View style={styles.keypadContainer}>
-              <Text style={styles.keypadTitle}>Snooze PIN</Text>
-
-              <View style={[styles.pinDisplay, pinError && styles.pinDisplayError]}>
-                <Text style={styles.pinDisplayText}>{'•'.repeat(enteredPin.length).padEnd(10, '·')}</Text>
-              </View>
-
-              {pinError && <Text style={styles.pinErrorText}>Incorrect PIN. Please try again.</Text>}
-
-              <View style={styles.keypadGrid}>
-                {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
-                  <Pressable
-                    key={digit}
-                    style={({ pressed }) => [styles.keypadKey, pressed && styles.pressed]}
-                    onPress={() => handleKeyPress(digit)}
-                    accessibilityLabel={`Digit ${digit}`}
-                  >
-                    <Text style={styles.keypadKeyText}>{digit}</Text>
-                  </Pressable>
-                ))}
-
-                <Pressable style={styles.keypadKeyClear} onPress={handleClearPin} accessibilityLabel="Clear PIN">
-                  <Text style={styles.keypadKeyClearText}>CLEAR</Text>
-                </Pressable>
-
-                <Pressable style={styles.keypadKey} onPress={() => handleKeyPress('0')} accessibilityLabel="Digit 0">
-                  <Text style={styles.keypadKeyText}>0</Text>
-                </Pressable>
-
-                <Pressable
-                  style={[styles.keypadKeyConfirm, enteredPin.length !== 10 && styles.keypadKeyConfirmDisabled]}
-                  onPress={handleConfirmPin}
-                  disabled={enteredPin.length !== 10}
-                  accessibilityLabel="Confirm PIN"
-                >
-                  <Text style={styles.keypadKeyConfirmText}>OK</Text>
-                </Pressable>
-              </View>
-
-              <Pressable
-                style={styles.keypadCancel}
-                onPress={() => {
-                  setIsKeypadOpen(false);
-                  setEnteredPin('');
-                  setPinError(false);
-                }}
-                accessibilityLabel="Cancel snooze"
-              >
-                <Text style={styles.keypadCancelText}>Cancel</Text>
+          onClose={() => setIsScannerOpen(false)}
+          title={`Scan ${itemName}`}
+          granted={!!permission?.granted}
+          onScanned={handleDisarmBarcodeScanned}
+          colors={{ bg: r.bg, text: r.text, textDim: r.textDim, accent: r.accent, onAccent: r.onAccent }}
+          fontFamily={f.medium}
+          permissionContent={
+            <>
+              <Text style={{ color: r.text, fontFamily: f.strong, fontSize: 22 }}>Camera needed</Text>
+              <Text style={{ color: r.textDim, fontFamily: f.body, fontSize: 15 }}>The camera scans your wake-up item.</Text>
+              <Pressable onPress={() => requestPermission()} accessibilityRole="button" accessibilityLabel="Allow camera" style={[styles.mainButton, { backgroundColor: r.accent, borderRadius: 30 }]}>
+                <Text style={{ color: r.onAccent, fontFamily: f.strong, fontSize: 16 }}>Allow camera</Text>
               </Pressable>
+              <Pressable onPress={() => setIsScannerOpen(false)} accessibilityRole="button" accessibilityLabel="Cancel barcode scanning" style={styles.quietLink}>
+                <Text style={{ color: r.textDim, fontFamily: f.medium, fontSize: 15 }}>Cancel</Text>
+              </Pressable>
+            </>
+          }
+        />
+
+        <Modal visible={isKeypadOpen && isRinging} animationType="fade" transparent onRequestClose={() => setIsKeypadOpen(false)}>
+          <View style={[styles.keypadOverlay, { backgroundColor: `${r.bg}F2` }]}>
+            <Text style={[{ color: r.textDim, letterSpacing: 2 }, T(12)]}>{say(`Snooze ${snoozeLabel}`)}</Text>
+            <View style={styles.dots} accessibilityLabel={`${enteredPin.length} of 10 digits entered`}>
+              {Array.from({ length: 10 }, (_, i) => (
+                <View
+                  key={i}
+                  style={{
+                    width: 12,
+                    height: 12,
+                    borderRadius: retro ? 0 : 6,
+                    backgroundColor: i < enteredPin.length ? r.accent : 'transparent',
+                    borderWidth: 1.5,
+                    borderColor: pinError ? r.accent : r.textDim,
+                  }}
+                />
+              ))}
             </View>
+            <Text style={[{ color: r.accent, minHeight: 22 }, T(14)]}>{pinError ? say('Wrong PIN. Try again.') : ' '}</Text>
+
+            <View style={styles.keypadGrid}>
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', 'OK'].map((k) => {
+                const isOk = k === 'OK';
+                const isClear = k === 'C';
+                const okDisabled = isOk && enteredPin.length !== 10;
+                return (
+                  <Pressable
+                    key={k}
+                    onPress={isOk ? handleConfirmPin : isClear ? handleClearPin : () => handleKeyPress(k)}
+                    disabled={okDisabled}
+                    accessibilityRole="button"
+                    accessibilityLabel={isOk ? 'Confirm PIN' : isClear ? 'Clear PIN' : `Digit ${k}`}
+                    style={({ pressed }) => [
+                      styles.key,
+                      {
+                        borderRadius: retro ? 0 : 36,
+                        borderWidth: retro ? 1.5 : 0,
+                        borderColor: r.track,
+                        backgroundColor: isOk && !okDisabled ? r.accent : pressed ? r.track : retro ? 'transparent' : `${r.track}99`,
+                        opacity: okDisabled ? 0.35 : 1,
+                      },
+                    ]}
+                  >
+                    {isClear ? (
+                      <Ionicons name="close" size={24} color={r.textDim} />
+                    ) : (
+                      <Text style={{ color: isOk && !okDisabled ? r.onAccent : r.text, fontFamily: retro ? f.display : f.medium, fontSize: retro ? 34 : isOk ? 18 : 26 }}>{k}</Text>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <Pressable
+              onPress={() => {
+                setIsKeypadOpen(false);
+                setEnteredPin('');
+                setPinError(false);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel snooze"
+              style={styles.quietLink}
+            >
+              <Text style={[{ color: r.textDim }, T(15)]}>{say('Cancel')}</Text>
+            </Pressable>
           </View>
         </Modal>
       </View>
-    </LinearGradient>
+    </View>
   );
 }
 
-function createStyles(theme: ThemeConfig) {
-  const cardBg = `${theme.card}E6`;
-  const SHAPE_XL = 28;
-  return StyleSheet.create({
-    gradientContainer: { flex: 1 },
-    container: { flex: 1, paddingHorizontal: 20 },
-    topSection: { alignItems: 'center', paddingTop: 24 },
-    statusPill: {
-      flexDirection: 'row', alignItems: 'center', gap: 6,
-      backgroundColor: cardBg, paddingHorizontal: 16, paddingVertical: 7, borderRadius: 999, marginBottom: 16, overflow: 'hidden',
-    },
-    statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: SEMANTIC_COLORS.success },
-    statusPillSnooze: { borderWidth: 1, borderColor: theme.accent },
-    statusPillText: { color: theme.text, fontWeight: '700', fontSize: 13 },
-    clockText: { fontSize: 72, fontWeight: '800', color: theme.text, letterSpacing: -2, fontFamily: theme.fontFamily },
-    snoozeCountdownText: { fontSize: 72, fontWeight: '800', color: theme.accent, letterSpacing: -2, fontFamily: theme.fontFamily },
-    subText: { fontSize: 15, color: theme.textSecondary, marginTop: 8, textAlign: 'center' },
-    subTextBold: { color: theme.accent, fontWeight: '700' },
-
-    crueltyHint: { marginTop: 12, backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999 },
-    crueltyHintText: { color: SEMANTIC_COLORS.warning, fontWeight: '700', fontSize: 12, textAlign: 'center' },
-
-    middleSection: { flex: 1, justifyContent: 'center', gap: 16 },
-    card: { backgroundColor: cardBg, borderRadius: SHAPE_XL, padding: 20, overflow: 'hidden' },
-    cardHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 10 },
-    iconBadge: { width: 28, height: 28, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
-    cardTitle: { color: theme.text, fontSize: 15, fontWeight: '800', fontFamily: theme.fontFamily },
-    cardSubtitle: { color: theme.textSecondary, fontSize: 13, marginBottom: 12 },
-    progressTrack: { height: 10, backgroundColor: theme.background, borderRadius: 5, overflow: 'hidden' },
-    progressFill: { height: 10, backgroundColor: theme.accent },
-    fallbackButton: { backgroundColor: theme.background, borderRadius: 16, paddingVertical: 14, alignItems: 'center' },
-    fallbackButtonText: { color: theme.accent, fontWeight: '700' },
-    errorBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#3a0f14', borderColor: SEMANTIC_COLORS.error, borderWidth: 1, borderRadius: 16, padding: 14 },
-    errorBannerText: { color: SEMANTIC_COLORS.error, fontWeight: '700', flex: 1 },
-    bottomSection: { paddingBottom: 12, gap: 10 },
-    scanButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 999, paddingVertical: 18, overflow: 'hidden' },
-    scanButtonDisabled: { backgroundColor: '#333333', opacity: 0.7 },
-    scanButtonText: { color: theme.accentText, fontSize: 16, fontWeight: '800' },
-    snoozeButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: cardBg, borderRadius: 999, paddingVertical: 14, overflow: 'hidden' },
-    snoozeButtonText: { color: theme.accent, fontWeight: '700' },
-
-    modalContainer: { flex: 1, backgroundColor: theme.background },
-    permissionContainer: { flex: 1, padding: 24, justifyContent: 'center' },
-    permissionTitle: { fontSize: 24, fontWeight: '800', color: theme.text, marginBottom: 12, textAlign: 'center', fontFamily: theme.fontFamily },
-    permissionText: { fontSize: 16, color: theme.textSecondary, textAlign: 'center', marginBottom: 32, lineHeight: 24 },
-    modalFooter: { marginTop: 'auto' },
-    cancelButton: { paddingVertical: 16, alignItems: 'center' },
-    cancelButtonText: { color: theme.textSecondary, fontSize: 16, fontWeight: '700' },
-
-    cameraWrapper: { flex: 1, backgroundColor: '#000' },
-    cameraOverlay: { flex: 1, justifyContent: 'space-between', backgroundColor: 'rgba(0,0,0,0.3)' },
-    cameraHeaderBox: { padding: 24, paddingTop: 60, alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' },
-    cameraHeaderText: { color: '#ffffff', fontSize: 20, fontWeight: '800', marginBottom: 8 },
-    cameraSubHeaderText: { color: theme.textSecondary, fontSize: 14 },
-    cameraFooter: { padding: 32, paddingBottom: 48, alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' },
-
-    keypadOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', padding: 24 },
-    keypadContainer: { backgroundColor: theme.card, borderRadius: SHAPE_XL, padding: 24, overflow: 'hidden' },
-    keypadTitle: { color: theme.accent, fontWeight: '800', fontSize: 14, textAlign: 'center', marginBottom: 12, textTransform: 'uppercase' },
-    pinDisplay: { backgroundColor: '#000', borderRadius: 14, paddingVertical: 12, marginBottom: 8 },
-    pinDisplayError: { borderColor: SEMANTIC_COLORS.error, borderWidth: 1 },
-    pinDisplayText: { color: theme.accent, textAlign: 'center', fontSize: 18, fontWeight: '800', letterSpacing: 4 },
-    pinErrorText: { color: SEMANTIC_COLORS.error, textAlign: 'center', marginBottom: 8, fontSize: 12, fontWeight: '700' },
-    keypadGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
-    keypadKey: { width: '30%', height: 52, borderRadius: 14, backgroundColor: '#222', alignItems: 'center', justifyContent: 'center' },
-    keypadKeyText: { color: theme.text, fontSize: 18, fontWeight: '800' },
-    keypadKeyClear: { width: '30%', height: 52, borderRadius: 14, backgroundColor: '#1a1a1a', alignItems: 'center', justifyContent: 'center' },
-    keypadKeyClearText: { color: theme.textSecondary, fontSize: 11, fontWeight: '700' },
-    keypadKeyConfirm: { width: '30%', height: 52, borderRadius: 14, backgroundColor: theme.accent, alignItems: 'center', justifyContent: 'center' },
-    keypadKeyConfirmDisabled: { opacity: 0.3 },
-    keypadKeyConfirmText: { color: theme.accentText, fontSize: 14, fontWeight: '800' },
-    keypadCancel: { marginTop: 16, alignItems: 'center' },
-    keypadCancelText: { color: theme.textSecondary, fontSize: 14, fontWeight: '700' },
-
-    pressed: { opacity: 0.8 },
-    // TESTING-ONLY START
-    testBanner: {
-      flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8, padding: 10,
-      borderRadius: 12, borderWidth: 1, borderColor: SEMANTIC_COLORS.warning, backgroundColor: 'rgba(0,0,0,0.35)',
-    },
-    testBannerText: { flex: 1, color: SEMANTIC_COLORS.warning, fontWeight: '700', fontSize: 12 },
-    testExitButton: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: SEMANTIC_COLORS.warning },
-    testExitText: { color: '#000', fontWeight: '800', fontSize: 12 },
-    // TESTING-ONLY END
-  });
-}
+const styles = StyleSheet.create({
+  container: { flex: 1, paddingHorizontal: 24 },
+  top: { alignItems: 'center', paddingTop: 24, gap: 4 },
+  middle: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
+  bottom: { gap: 10, alignItems: 'stretch', paddingBottom: 8 },
+  mainButton: { height: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 24 },
+  quietLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 48 },
+  fallback: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 20, paddingVertical: 14 },
+  testBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 },
+  testExit: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  keypadOverlay: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24 },
+  dots: { flexDirection: 'row', gap: 10, marginTop: 8 },
+  keypadGrid: { flexDirection: 'row', flexWrap: 'wrap', width: 3 * 72 + 2 * 18, gap: 18, justifyContent: 'center' },
+  key: { width: 72, height: 72, alignItems: 'center', justifyContent: 'center' },
+});

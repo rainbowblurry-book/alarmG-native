@@ -1,59 +1,43 @@
 import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
-import AlarmScreen from '../screens/AlarmScreen';
-import SetupScreen from '../screens/SetupScreen';
-import SettingsScreen from '../screens/SettingsScreen';
-import { useTheme } from '../context/ThemeContext';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import HomeScreen from '../screens/HomeScreen';
+import { ItemScreen, MovementScreen, PinScreen } from '../screens/MissionScreens';
+import { DesignScreen, ReadinessScreen, SettingsScreen, WelcomeScreen } from '../screens/SettingsScreens';
+import { useDesign } from '../context/DesignContext';
 import { useWakeFlow } from '../context/WakeFlowContext';
+import type { RootStack } from './types';
 
-const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator<RootStack>();
 
-export default function AppNavigator() {
-  const { theme } = useTheme();
+/**
+ * Home without tabs. Mission pages (Item, PIN, Movement) are locked while armed:
+ * their chips are disabled and the pages close themselves if the alarm gets armed.
+ * Settings stays reachable while armed (D-35).
+ */
+export default function AppNavigator({ initialRoute }: { initialRoute?: keyof RootStack }) {
+  const { pack, onboarded } = useDesign();
   const { alarm } = useWakeFlow();
+  const first: keyof RootStack = initialRoute ?? (!onboarded && !alarm.armed ? 'Welcome' : 'Home');
 
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
+    <Stack.Navigator
+      initialRouteName={first}
+      screenOptions={{
         headerShown: false,
-        tabBarStyle: {
-          backgroundColor: theme.card,
-          borderTopWidth: 0,
-          elevation: 0,
-          height: 65,
-          paddingBottom: 12,
-          paddingTop: 8,
-        },
-        tabBarActiveTintColor: theme.accent,
-        tabBarInactiveTintColor: theme.textSecondary,
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName: keyof typeof Ionicons.glyphMap = 'shield';
-
-          if (route.name === 'Alarm') {
-            iconName = focused ? 'shield' : 'shield-outline';
-          } else if (route.name === 'Setup') {
-            iconName = focused ? 'scan' : 'scan-outline';
-          } else if (route.name === 'Settings') {
-            iconName = focused ? 'settings' : 'settings-outline';
-          }
-
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
-      })}
+        animation: pack.chrome === 'bevel' ? 'none' : 'slide_from_right',
+        contentStyle: { backgroundColor: pack.colors.bg },
+      }}
     >
-      <Tab.Screen name="Alarm" component={AlarmScreen} />
-      <Tab.Screen
-        name="Setup"
-        component={SetupScreen}
-        listeners={{
-          tabPress: (e) => {
-            if (alarm.armed) e.preventDefault();
-          },
-        }}
-      />
-      {/* Settings stays reachable while armed (test alarm, permissions, volume); Reset is disabled there. */}
-      <Tab.Screen name="Settings" component={SettingsScreen} />
-    </Tab.Navigator>
+      <Stack.Screen name="Welcome" component={WelcomeScreen} />
+      <Stack.Screen name="Home" component={HomeScreen} />
+      <Stack.Screen name="Item" component={ItemScreen} />
+      <Stack.Screen name="Pin" component={PinScreen} />
+      <Stack.Screen name="Movement" component={MovementScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="Readiness" component={ReadinessScreen} />
+      {/* TESTING-ONLY START */}
+      <Stack.Screen name="Design" component={DesignScreen} />
+      {/* TESTING-ONLY END */}
+    </Stack.Navigator>
   );
 }

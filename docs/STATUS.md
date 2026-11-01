@@ -38,6 +38,13 @@ Legend:
 - **90-minute ring limit** (D-36): if nobody does the mission or a PIN snooze, ringing stops 90 minutes after it started, with a "Missed alarm" notification; the alarm stays set for the next day [code].
 - Device test to add: arm, let it ring without touching it. At about 90 minutes it should stop, the "Missed alarm" notification appears, and the Alarm tab still shows it armed for the next day. Quicker check: Settings → Test alarm and leave it; it also stops at 90 minutes.
 
+## On branch `feature/ui-variants`: new UI (UNTESTED on device)
+- 4 designs in one APK: **Ember** (warm dark), **Paper** (light, sepia when ringing), **Field** (moss dark, sun-over-hill ringing), **Signal** (retro 90s desktop, amber CRT ringing). Switch in Settings → Design (testing only) [code].
+- Home without tabs, hold-to-arm / hold-to-cancel, Mission chips (Move · Item · PIN), time/days bottom sheet, grouped Settings, first-launch "Get ready" checklist, crash screen with a Copy button [code].
+- Engine (`modules/clockguard-alarm`) **not changed**. Ringing logic (movement gate, barcode check, PIN check, Back blocking) is the same code with a new look [code].
+- Checked: `tsc` clean, `expo prebuild` OK (engine, svg and clipboard autolinked), every screen of all 4 designs rendered on web with a mocked engine and reviewed [code].
+- **Device test to do (all 4 designs):** arm by holding; cancel by holding; tap the card while armed (must not open); Mission chips disabled while armed; Test alarm → ringing screen: Back does nothing, movement fills, Scan appears only after movement, wrong item rejected, right item disarms; PIN snooze; snoozed screen → Scan now; Exit test. Then re-run the engine checklist above.
+
 ## Known limitations (honest)
 - **Force stop** (App info → Force stop) cancels all alarms until the app is opened again. This is an Android rule. **Removing the app from Recents is fine**: the alarm and ringing survive it [device, test 4].
 - The ringing-service restart after a system kill is requested, not guaranteed. Keep Battery set to Unrestricted.
@@ -47,7 +54,7 @@ Legend:
 
 ## Next steps
 1. Build a new APK (Actions → Android APK (manual)) to get the PIN fix; test the PIN flow and test 9 (reboot).
-2. UI/UX revamp on a new branch. The alarm engine is not touched.
+2. UI/UX revamp: built on `feature/ui-variants` (see above); test it with the next APK.
 3. When the UI is final: remove the code between the `TESTING-ONLY START`/`END` markers.
 
 ## CI runs

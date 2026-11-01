@@ -1,18 +1,37 @@
 import React, { useEffect, useRef } from 'react';
 import { AppState, PermissionsAndroid, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { NavigationContainer, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import {
-  useFonts,
-  PlusJakartaSans_400Regular,
-  PlusJakartaSans_600SemiBold,
-  PlusJakartaSans_700Bold,
-} from '@expo-google-fonts/plus-jakarta-sans';
+import { useFonts } from 'expo-font';
+import { DMSans_400Regular, DMSans_500Medium, DMSans_700Bold } from '@expo-google-fonts/dm-sans';
+import { Fraunces_300Light } from '@expo-google-fonts/fraunces';
+import { Archivo_200ExtraLight, Archivo_400Regular, Archivo_500Medium, Archivo_700Bold } from '@expo-google-fonts/archivo';
+import { Nunito_300Light, Nunito_400Regular, Nunito_600SemiBold, Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
+import { VT323_400Regular } from '@expo-google-fonts/vt323';
 import AppNavigator from './src/navigation/AppNavigator';
 import { SettingsProvider, useSettings } from './src/context/SettingsContext';
 import { WakeFlowProvider, useWakeFlow } from './src/context/WakeFlowContext';
+import { DesignProvider, useDesign } from './src/context/DesignContext';
 import RingingScreen from './src/screens/RingingScreen';
+import ErrorBoundary from './src/components/ErrorBoundary';
+
+/** All fonts are free Google Fonts (OFL), bundled with the app. */
+export const FONTS = {
+  DMSans_400Regular,
+  DMSans_500Medium,
+  DMSans_700Bold,
+  Fraunces_300Light,
+  Archivo_200ExtraLight,
+  Archivo_400Regular,
+  Archivo_500Medium,
+  Archivo_700Bold,
+  Nunito_300Light,
+  Nunito_400Regular,
+  Nunito_600SemiBold,
+  Nunito_800ExtraBold,
+  VT323_400Regular,
+};
 
 /** Android 13+: ask for notification permission once (needed for the ringing notification). */
 function useNotificationPermission() {
@@ -53,39 +72,60 @@ function useWheelTimeSync() {
   }, []);
 }
 
-function RootContent() {
+/** Shared by the real app and the web preview. */
+export function AppShell({ initialRoute }: { initialRoute?: React.ComponentProps<typeof AppNavigator>['initialRoute'] }) {
   const { alarm } = useWakeFlow();
-  useNotificationPermission();
-  useWheelTimeSync();
+  const { pack } = useDesign();
 
   if (alarm.state !== 'idle') {
-    return <RingingScreen />;
+    return (
+      <>
+        <StatusBar style="light" />
+        <RingingScreen />
+      </>
+    );
   }
 
+  const base = pack.mode === 'dark' ? DarkTheme : DefaultTheme;
   return (
-    <NavigationContainer theme={DarkTheme}>
-      <AppNavigator />
-    </NavigationContainer>
+    <>
+      <StatusBar style={pack.mode === 'dark' || pack.chrome === 'bevel' ? 'light' : 'dark'} />
+      <NavigationContainer theme={{ ...base, colors: { ...base.colors, background: pack.colors.bg, card: pack.colors.surface, text: pack.colors.text, border: pack.colors.border, primary: pack.colors.accent } }}>
+        <AppNavigator initialRoute={initialRoute} />
+      </NavigationContainer>
+    </>
   );
 }
 
+function RootContent() {
+  useNotificationPermission();
+  useWheelTimeSync();
+  return <AppShell />;
+}
+
 export default function App() {
-  const [fontsLoaded] = useFonts({
-    PlusJakartaSans_400Regular,
-    PlusJakartaSans_600SemiBold,
-    PlusJakartaSans_700Bold,
-  });
+  const [fontsLoaded] = useFonts(FONTS);
 
   if (!fontsLoaded) return null;
 
+  // TESTING-ONLY START: web-only visual preview with a mocked engine (never on Android)
+  if (Platform.OS === 'web') {
+    const PreviewApp = require('./src/preview/PreviewApp').default;
+    return <PreviewApp />;
+  }
+  // TESTING-ONLY END
+
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" />
-      <SettingsProvider>
-        <WakeFlowProvider>
-          <RootContent />
-        </WakeFlowProvider>
-      </SettingsProvider>
+      <ErrorBoundary>
+        <SettingsProvider>
+          <WakeFlowProvider>
+            <DesignProvider>
+              <RootContent />
+            </DesignProvider>
+          </WakeFlowProvider>
+        </SettingsProvider>
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 }

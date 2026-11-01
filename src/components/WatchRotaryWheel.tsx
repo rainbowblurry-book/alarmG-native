@@ -53,6 +53,11 @@ interface WatchRotaryWheelProps {
   textSecondaryColor: string;
   backgroundColor: string;
   cardColor: string;
+  /** Optional design-pack styling; defaults keep the original look. */
+  borderColor?: string;
+  notchColor?: string;
+  fontFamily?: string;
+  glow?: boolean;
 }
 
 export default function WatchRotaryWheel({
@@ -66,6 +71,10 @@ export default function WatchRotaryWheel({
   textColor,
   textSecondaryColor,
   cardColor,
+  borderColor = 'rgba(74, 90, 116, 0.35)',
+  notchColor = '#2A3750',
+  fontFamily,
+  glow = true,
 }: WatchRotaryWheelProps) {
   const range = max - min + 1;
 
@@ -291,7 +300,7 @@ export default function WatchRotaryWheel({
     <View
       style={[
         styles.track,
-        { backgroundColor: cardColor, borderColor: 'rgba(74, 90, 116, 0.35)' },
+        { backgroundColor: cardColor, borderColor },
       ]}
     >
       {/* Stage 1: cylinder rim + gesture area */}
@@ -343,7 +352,7 @@ export default function WatchRotaryWheel({
                   styles.gearNotch,
                   side === 'left' ? { right: -42 } : { left: -42 },
                   {
-                    backgroundColor: isCenterSelected ? accentColor : '#2A3750',
+                    backgroundColor: isCenterSelected ? accentColor : notchColor,
                     width: isCenterSelected ? 10 : 6,
                     opacity: isCenterSelected ? 1 : 0.6,
                   },
@@ -354,7 +363,8 @@ export default function WatchRotaryWheel({
                 style={[
                   styles.itemText,
                   { color: itemColor },
-                  isCenterSelected && {
+                  fontFamily ? { fontFamily, fontWeight: 'normal' } : null,
+                  glow && isCenterSelected && {
                     textShadowColor: accentColor,
                     textShadowOffset: { width: 0, height: 0 },
                     textShadowRadius: 18,
