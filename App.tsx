@@ -16,6 +16,7 @@ import { WakeFlowProvider, useWakeFlow } from './src/context/WakeFlowContext';
 import { DesignProvider, useDesign } from './src/context/DesignContext';
 import RingingScreen from './src/screens/RingingScreen';
 import ErrorBoundary from './src/components/ErrorBoundary';
+import { useMorningsRecorder } from './src/logic/mornings';
 
 /** All fonts are free Google Fonts (OFL), bundled with the app. */
 export const FONTS = {
@@ -98,8 +99,10 @@ export function AppShell({ initialRoute }: { initialRoute?: React.ComponentProps
 }
 
 function RootContent() {
+  const { alarm } = useWakeFlow();
   useNotificationPermission();
   useWheelTimeSync();
+  useMorningsRecorder(alarm);
   return <AppShell />;
 }
 

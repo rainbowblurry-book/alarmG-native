@@ -8,6 +8,8 @@ import { useDesign } from '../context/DesignContext';
 import * as Alarm from '../../modules/clockguard-alarm';
 import { bevel, Btn, ExplainRow, Header, Row, Screen, SectionLabel, space, Surface, Toggle, Txt } from '../components/ui';
 import { PERMISSION_ROWS, usePermissions } from '../logic/useReadiness';
+import { useMornings } from '../logic/mornings';
+import { PACK_TIER } from '../logic/features';
 import { PACK_ORDER, PACKS, isPackUnlocked } from '../theme/packs';
 import type { RootStack } from '../navigation/types';
 
@@ -22,6 +24,7 @@ export function SettingsScreen({ navigation }: NativeStackScreenProps<RootStack,
   // TESTING-ONLY END
   const [perms] = usePermissions();
   const off = PERMISSION_ROWS.filter((r) => !perms[r.key]).length;
+  const { stats } = useMornings();
 
   const confirmReset = () =>
     Alert.alert('Reset settings?', 'Clears your item, PIN and mission settings. You set them up again before arming.', [
@@ -41,6 +44,11 @@ export function SettingsScreen({ navigation }: NativeStackScreenProps<RootStack,
           onPress={() => navigation.navigate('Readiness')}
           last
         />
+      </Surface>
+
+      <SectionLabel>You</SectionLabel>
+      <Surface>
+        <Row icon="flame-outline" title="Mornings" value={stats.current ? `${stats.current} in a row` : undefined} onPress={() => navigation.navigate('Mornings')} pro last />
       </Surface>
 
       <SectionLabel>Sound</SectionLabel>
@@ -227,7 +235,16 @@ export function DesignScreen({ navigation }: NativeStackScreenProps<RootStack, '
               ))}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: p.fonts.strong, fontSize: p.chrome === 'bevel' ? 25 : 18, color: p.chrome === 'bevel' ? '#FFFFFF' : p.colors.text }}>{p.name}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={{ fontFamily: p.fonts.strong, fontSize: p.chrome === 'bevel' ? 25 : 18, color: p.chrome === 'bevel' ? '#FFFFFF' : p.colors.text }}>{p.name}</Text>
+                {PACK_TIER[id] === 'premium' ? (
+                  <Text style={{ fontFamily: p.fonts.medium, fontSize: p.chrome === 'bevel' ? 15 : 10, letterSpacing: 0.8, color: p.chrome === 'bevel' ? '#000' : p.colors.accent, backgroundColor: p.chrome === 'bevel' ? '#FFB000' : 'transparent', borderWidth: 1, borderColor: p.chrome === 'bevel' ? '#000' : p.colors.accent, borderRadius: p.chrome === 'bevel' ? 0 : 8, paddingHorizontal: 6, overflow: 'hidden' }}>
+                    PRO
+                  </Text>
+                ) : (
+                  <Text style={{ fontFamily: p.fonts.medium, fontSize: 11, color: p.colors.textDim }}>Free · default</Text>
+                )}
+              </View>
               <Text style={{ fontFamily: p.fonts.body, fontSize: p.chrome === 'bevel' ? 18 : 13, color: p.chrome === 'bevel' ? '#DDEFEF' : p.colors.textDim }}>{p.tagline}</Text>
             </View>
             {active && <Ionicons name="checkmark-circle" size={22} color={p.chrome === 'bevel' ? '#FFFFFF' : p.colors.accent} />}

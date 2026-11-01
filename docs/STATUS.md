@@ -49,6 +49,16 @@ Legend:
 - First launch: 4-card intro (skippable) → Get ready checklist; Settings → How it works replays it. Full UI review of every screen × 4 designs done on web; fixed: see-through PIN keypad, wordy stepper hint, leftover blue loading/splash colours [code].
 - **Device test to do (all 4 designs):** fresh install or after Reset: intro → Get ready → Home; Settings → How it works → back to Settings; tap the numbers → type 0715 → Done shows 07:15; set snooze to e.g. 2 min and check a PIN snooze lasts 2 min; set movement to e.g. 30 and check the ringing count; drag the hour and minutes on Home (one haptic click per step), tap the time → picker → Done saves; while armed dragging/tapping does nothing; arm by holding; cancel by holding; tap the card while armed (must not open); Mission chips disabled while armed; Test alarm → ringing screen: Back does nothing, movement fills, Scan appears only after movement, wrong item rejected, right item disarms; PIN snooze; snoozed screen → Scan now; Exit test. Then re-run the engine checklist above.
 
+## On branch `feature/streaks-alarms` (from build #9), built and tested phase by phase
+Plan: [FEATURES-PLAN.md](FEATURES-PLAN.md). Everything unlocked for now; premium items show a PRO tag.
+- **Phase 1, Streaks (JS only, engine untouched)** [code; streak maths unit-checked; screens checked on web]:
+  finished real alarms are saved on the phone; a ring that ends without the mission counts as missed;
+  streak flame on Home (after the first finished morning) and a Mornings page (Settings → You → Mornings).
+  - Device test: finish a real alarm → flame shows 1; let a real alarm hit the 90-minute limit → streak 0
+    (open the app afterwards); test alarms never change it.
+- Phase 2, Multiple alarms: not started (engine change, after Phase 1 passes).
+- Phase 3, Wake-up check: not started (engine change, after Phase 2 passes).
+
 ## Known limitations (honest)
 - **Force stop** (App info → Force stop) cancels all alarms until the app is opened again. This is an Android rule. **Removing the app from Recents is fine**: the alarm and ringing survive it [device, test 4].
 - The ringing-service restart after a system kill is requested, not guaranteed. Keep Battery set to Unrestricted.

@@ -11,6 +11,7 @@ import { FieldHill } from '../components/RingVisuals';
 import Svg, { Path } from 'react-native-svg';
 import TimeSheet from './TimeSheet';
 import { DragTime, wasJustDragged } from '../components/TimePickers';
+import { useMornings } from '../logic/mornings';
 import { armBlockers, DAY_SHORT, describeDays, formatIn, pad2, usePermissions } from '../logic/useReadiness';
 import type { RootStack } from '../navigation/types';
 
@@ -32,6 +33,7 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<RootSt
   const { settings, updateSettings } = useSettings();
   const { alarm, arm, cancelAlarm } = useWakeFlow();
   const [perms, refreshPerms] = usePermissions();
+  const { stats } = useMornings();
   const [now, setNow] = useState(() => new Date());
   // TESTING-ONLY START: the web preview can open the time sheet for screenshots
   const previewSheet = (globalThis as { __cgPreviewSheet?: boolean }).__cgPreviewSheet === true;
@@ -92,6 +94,23 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<RootSt
         <Text style={{ fontFamily: retro || pack.chrome === 'sketch' ? pack.fonts.strong : pack.fonts.medium, fontSize: retro ? 28 : pack.chrome === 'sketch' ? 32 : 15, color: onBg(pack), letterSpacing: pack.labelCaps && !retro ? 2 : 0 }}>
           {pack.labelCaps && !retro ? 'CLOCKGUARD' : 'ClockGuard'}
         </Text>
+        <View style={{ flex: 1 }} />
+        {/* Streak: shown once there is at least one finished morning */}
+        {stats.total > 0 && (
+          <Pressable
+            onPress={() => navigation.navigate('Mornings')}
+            accessibilityRole="button"
+            accessibilityLabel={`${stats.current} mornings in a row. Open Mornings.`}
+            hitSlop={6}
+            style={({ pressed }) => [
+              { flexDirection: 'row', alignItems: 'center', gap: 4, height: 34, paddingHorizontal: 10, marginRight: 6, opacity: pressed ? 0.7 : 1 },
+              retro ? { backgroundColor: c.surface, ...bevel(pressed) } : { borderRadius: 17, backgroundColor: pack.chrome === 'sketch' ? 'transparent' : c.surface },
+            ]}
+          >
+            <Ionicons name={retro ? 'flame-sharp' : 'flame'} size={16} color={retro ? '#000' : stats.current > 0 ? c.accent : c.textDim} />
+            <Text style={{ fontFamily: pack.chrome === 'sketch' ? pack.fonts.strong : pack.fonts.medium, fontSize: retro ? 20 : pack.chrome === 'sketch' ? 22 : 14, color: retro ? '#000' : c.text }}>{stats.current}</Text>
+          </Pressable>
+        )}
         <Pressable
           onPress={() => navigation.navigate('Settings')}
           accessibilityRole="button"

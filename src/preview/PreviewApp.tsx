@@ -5,6 +5,7 @@ import { AlarmSettings, SettingsContext } from '../context/SettingsContext';
 import { WakeFlowContext } from '../context/WakeFlowContext';
 import { DesignProvider } from '../context/DesignContext';
 import { setPermissionsReaderForPreview } from '../logic/useReadiness';
+import { dayKey, seedMorningsForPreview } from '../logic/mornings';
 import { AppShell } from '../../App';
 import type { AlarmState } from '../../modules/clockguard-alarm';
 import type { PackId } from '../theme/packs';
@@ -24,6 +25,19 @@ const permsOk = q.get('perms') !== 'missing';
 setPermissionsReaderForPreview(() => ({ notifications: permsOk, exactAlarms: permsOk, fullScreen: permsOk, batteryUnrestricted: permsOk }));
 
 const now = Date.now();
+if (q.get('history') !== '0') {
+  // 4 weeks of sample mornings: mostly done, a couple missed, weekends without alarm
+  const seed = [];
+  for (let i = 27; i >= 1; i--) {
+    const t = now - i * 86400000;
+    const dow = new Date(t).getDay();
+    if (dow === 0 || dow === 6) continue;
+    const session = new Date(new Date(t).setHours(6, 45, 0, 0)).getTime();
+    const missed = i === 16 || i === 9;
+    seed.push({ session, day: dayKey(session), upAt: missed ? 0 : session + (3 + (i % 5)) * 60000, snoozes: i % 4 === 0 ? 1 : 0, result: missed ? ('missed' as const) : ('done' as const) });
+  }
+  seedMorningsForPreview(seed);
+}
 const alarm: AlarmState = {
   state: state === 'ringing' || state === 'scan' ? 'ringing' : state === 'snoozed' ? 'snoozed' : 'idle',
   armed: state !== 'idle' && state !== 'blocked',

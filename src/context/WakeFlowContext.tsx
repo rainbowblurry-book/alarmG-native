@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { AppState } from 'react-native';
 import * as Alarm from '../../modules/clockguard-alarm';
 import type { AlarmState } from '../../modules/clockguard-alarm';
+import { markMissionDone } from '../logic/mornings';
 
 /**
  * Mirrors the native alarm engine's state (modules/clockguard-alarm) into React.
@@ -101,6 +102,8 @@ export function WakeFlowProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const disarm = useCallback(() => {
+    // Streaks: the mission was completed for this ring (test rings are ignored inside).
+    markMissionDone(Alarm.getState());
     Alarm.disarm();
     setMovementProgress(0);
     refresh();

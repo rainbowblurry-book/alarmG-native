@@ -54,6 +54,9 @@ src/components/ErrorBoundary.tsx crash screen with Copy button
 src/components/TimePickers.tsx   DragTime (drag the big hour/minutes on Home) + one picker per design:
                                  Lumen arc sliders, Paper tape rulers, Field sun + slider, Signal LCD ▲▼
 src/logic/pin.ts, useReadiness.ts  PIN rules; permissions, arming gates, day/time helpers
+src/logic/mornings.ts            streak history (AsyncStorage '@clockguard_mornings'), done/missed recording, stats
+src/logic/features.ts            free/premium registry (all unlocked for now)
+src/screens/MorningsScreen.tsx   streak + last 4 weeks + averages
 src/navigation/AppNavigator.tsx  native stack: Intro, Welcome, Home, Item, Pin, Movement, Settings, Readiness, Design
 src/screens/IntroScreen.tsx      first-launch walkthrough (4 cards, skippable; replay from Settings)
 src/screens/HomeScreen.tsx       next-alarm card (per-design layout), Mission chips, hold-to-arm

@@ -2,6 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import HomeScreen from '../screens/HomeScreen';
 import IntroScreen from '../screens/IntroScreen';
+import MorningsScreen from '../screens/MorningsScreen';
 import { ItemScreen, MovementScreen, PinScreen } from '../screens/MissionScreens';
 import { DesignScreen, ReadinessScreen, SettingsScreen, WelcomeScreen } from '../screens/SettingsScreens';
 import { useDesign } from '../context/DesignContext';
@@ -37,6 +38,7 @@ export default function AppNavigator({ initialRoute }: { initialRoute?: keyof Ro
       <Stack.Screen name="Movement" component={MovementScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="Readiness" component={ReadinessScreen} />
+      <Stack.Screen name="Mornings" component={MorningsScreen} />
       {/* TESTING-ONLY START */}
       <Stack.Screen name="Design" component={DesignScreen} />
       {/* TESTING-ONLY END */}

@@ -7,6 +7,7 @@ export type RootStack = {
   Movement: undefined;
   Settings: undefined;
   Readiness: undefined;
+  Mornings: undefined;
   // TESTING-ONLY START
   Design: undefined;
   // TESTING-ONLY END

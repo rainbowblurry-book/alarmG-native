@@ -476,7 +476,10 @@ export function Row({
   disabled,
   last,
   accessibilityLabel,
+  pro,
 }: {
+  /** shows a PRO tag after the title */
+  pro?: boolean;
   icon?: IconName;
   title: string;
   value?: string;
@@ -504,9 +507,12 @@ export function Row({
       }}
     >
       {icon && <Ionicons name={icon} size={20} color={c.text} />}
-      <Txt variant="body" color={c.text} style={{ flex: 1 }}>
-        {title}
-      </Txt>
+      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Txt variant="body" color={c.text} style={{ flexShrink: 1 }}>
+          {title}
+        </Txt>
+        {pro && <ProTag />}
+      </View>
       {value ? (
         <Txt variant="caption" color={toneColor}>
           {value}
@@ -773,5 +779,24 @@ export function Sheet({ visible, onClose, children, title }: { visible: boolean;
       </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
+  );
+}
+
+/** Small tag on features that will be premium later (everything is unlocked for now). */
+export function ProTag() {
+  const { pack } = useDesign();
+  const c = pack.colors;
+  const retro = pack.chrome === 'bevel';
+  const hand = pack.chrome === 'sketch';
+  return (
+    <View
+      accessibilityLabel="Premium feature, unlocked for testing"
+      style={[
+        { paddingHorizontal: 6, paddingVertical: 1, alignSelf: 'center' },
+        retro ? { backgroundColor: '#FFB000', borderWidth: 1, borderColor: '#000' } : hand ? { borderWidth: 1.5, borderColor: c.accent, borderRadius: 9, transform: [{ rotate: '-4deg' }] } : { borderWidth: 1, borderColor: c.accent, borderRadius: 8 },
+      ]}
+    >
+      <Text style={{ fontFamily: hand ? pack.fonts.strong : pack.fonts.medium, fontSize: retro ? 15 : hand ? 15 : 10, letterSpacing: hand ? 0 : 0.8, color: retro ? '#000' : c.accent }}>PRO</Text>
+    </View>
   );
 }
