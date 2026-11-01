@@ -1,0 +1,20 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.clockguardalarm'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.clockguardalarm"
+  defaultConfig {
+    versionCode 1
+    versionName '1.0.0'
+  }
+}
+
+dependencies {
+  // NotificationCompat, ServiceCompat, ContextCompat (same version expo-notifications uses).
+  implementation 'androidx.core:core:1.17.0'
+}
