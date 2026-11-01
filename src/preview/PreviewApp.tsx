@@ -12,10 +12,10 @@ import type { RootStack } from '../navigation/types';
 
 /**
  * Renders any screen of any design with a mocked engine, for screenshots:
- *   /?design=ember&screen=Home&state=idle|armed|blocked|ringing|scan|snoozed&test=1&perms=ok|missing
+ *   /?design=lumen&screen=Home&state=idle|armed|blocked|ringing|scan|snoozed&test=1&perms=ok|missing
  */
 const q = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-const design = (q.get('design') ?? 'ember') as PackId;
+const design = (q.get('design') ?? 'lumen') as PackId;
 const screen = (q.get('screen') ?? 'Home') as keyof RootStack;
 const state = q.get('state') ?? 'idle';
 const permsOk = q.get('perms') !== 'missing';

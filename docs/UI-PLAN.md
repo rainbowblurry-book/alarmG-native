@@ -43,8 +43,8 @@ _Written 2026-11-01 at the end of the engine session. The user approved this pla
 ## The 4 designs (no purple/blue)
 | # | Name | Mode | Mood / palette | Inspired by | Ringing screen |
 |---|---|---|---|---|---|
-| 1 | Ember | dark | warm charcoal, ember orange, soft glow | Hatch sunrise lamps, bedside clocks | slow dim "sunrise" glow that warms as movement fills |
-| 2 | Paper | light | warm off-white, ink black, one signal red, big printed numerals | Braun clocks, Things 3 | switches to sepia-dark, never bright white |
+| 1 | **Lumen** (replaced Ember, user 2026-11-01: "looks like Claude colours") | dark | graphite #0E0F11, off-white, one volt-lime #D4F25C; Unbounded numerals, Manrope text; bento tiles | modern sport/fintech dashboards | segmented ring (one segment per move) + soft dim volt glow |
+| 2 | Paper (**redone as a handwritten notebook**) | light | ruled cream paper, red margin, graphite ink, red pen, yellow highlighter; Caveat numerals, Patrick Hand text; sticky-note chips, taped index card | paper notebooks | dark notebook page, chalky handwriting, tally marks fill as you move |
 | 3 | Field | dark | moss green + bone, rounded soft shapes | Headspace calm, but grown-up | progress drawn as a sun rising over a hill (SVG) |
 | 4 | Signal | **retro 90s** (user, 2026-11-01) | teal desktop #008080, grey 3-D chrome #C0C0C0/#808080, VT323 terminal font | 90s desktops, amber CRT terminals | dim amber CRT: scanlines, block progress bar `[████░░]`, terminal text |
 
@@ -69,9 +69,9 @@ No dev client or Metro (the old tunnel/ngrok trouble). If the app breaks: reinst
 - Ideas for later: multiple alarms, mission difficulty, first-run guide (now in plan), low-battery warning.
 
 ## Build notes (2026-11-01, after "go")
-- Mix is now 1 light (Paper), 2 dark (Ember, Field), 1 retro (Signal). All ringing/snooze screens are dim.
-- Libraries added (all free): react-native-svg, @react-navigation/native-stack, expo-clipboard, Google Fonts (DM Sans, Fraunces, Archivo, Nunito, VT323; all OFL). Reanimated/gesture-handler were **not** needed (RN Animated is enough), so less native risk.
-- Web preview (dev-only): `npx expo export -p web`, then open `/?design=ember&screen=Home&state=idle|armed|blocked|ringing|scan|snoozed&perms=ok|missing&sheet=1`.
+- Mix is now 1 light (Paper), 2 dark (Lumen, Field), 1 retro (Signal). All ringing/snooze screens are dim.
+- Libraries added (all free): react-native-svg, @react-navigation/native-stack, expo-clipboard, Google Fonts (Manrope, Unbounded, Caveat, Patrick Hand, Nunito, VT323; all OFL). Reanimated/gesture-handler were **not** needed (RN Animated is enough), so less native risk.
+- Web preview (dev-only): `npx expo export -p web`, then open `/?design=lumen&screen=Home&state=idle|armed|blocked|ringing|scan|snoozed&perms=ok|missing&sheet=1`.
 
 ### Colour notes (sources checked on the web)
 - Dark designs use warm/tinted near-black instead of #000 and off-white text instead of #FFF (Material dark-theme guidance: https://m2.material.io/design/color/dark-theme).

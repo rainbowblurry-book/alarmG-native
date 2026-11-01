@@ -45,6 +45,22 @@ export function bevel(sunken = false): ViewStyle {
   };
 }
 
+/** Hand-drawn notebook edge: uneven corners make the box look drawn with a pen. */
+export const SKETCH_RADII = { borderTopLeftRadius: 18, borderTopRightRadius: 6, borderBottomRightRadius: 16, borderBottomLeftRadius: 7 };
+const INK = '#2A2926';
+
+/** Ruled notebook paper with a red margin line (Paper design background). */
+export function RuledPaper({ line = '#D9E0E6', margin = '#E3A49A', gap = 34 }: { line?: string; margin?: string; gap?: number }) {
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {Array.from({ length: 60 }, (_, i) => (
+        <View key={i} style={{ position: 'absolute', left: 0, right: 0, top: 96 + i * gap, height: 1, backgroundColor: line }} />
+      ))}
+      <View style={{ position: 'absolute', top: 0, bottom: 0, left: 30, width: 1.5, backgroundColor: margin }} />
+    </View>
+  );
+}
+
 // ───────────────────────── Text
 type Variant = 'title' | 'headline' | 'body' | 'caption' | 'label';
 
@@ -64,14 +80,16 @@ export function Txt({
   const { pack } = useDesign();
   const f = pack.fonts;
   const retro = pack.chrome === 'bevel';
+  const hand = pack.chrome === 'sketch';
+  const pick = (normal: number, r: number, h: number) => (retro ? r : hand ? h : normal);
   const base: Record<Variant, TextStyle> = {
-    title: { fontFamily: f.strong, fontSize: retro ? 32 : 26, letterSpacing: retro ? 0 : -0.4 },
-    headline: { fontFamily: f.medium, fontSize: retro ? 23 : 17 },
-    body: { fontFamily: f.body, fontSize: retro ? 21 : 15, lineHeight: retro ? 22 : 21 },
-    caption: { fontFamily: f.body, fontSize: retro ? 18 : 13, lineHeight: retro ? 19 : 18 },
+    title: { fontFamily: f.strong, fontSize: pick(26, 32, 38), letterSpacing: retro || hand ? 0 : -0.4 },
+    headline: { fontFamily: hand ? f.strong : f.medium, fontSize: pick(17, 23, 27) },
+    body: { fontFamily: f.body, fontSize: pick(15, 21, 19), lineHeight: pick(21, 22, 24) },
+    caption: { fontFamily: f.body, fontSize: pick(13, 18, 16), lineHeight: pick(18, 19, 20) },
     label: {
-      fontFamily: f.medium,
-      fontSize: retro ? 17 : 11.5,
+      fontFamily: hand ? f.strong : f.medium,
+      fontSize: pick(11.5, 17, 20),
       letterSpacing: pack.labelCaps ? 1.4 : 0.4,
       textTransform: pack.labelCaps ? 'uppercase' : 'none',
     },
@@ -112,6 +130,7 @@ export function Screen({
   );
   return (
     <View style={{ flex: 1, backgroundColor: pack.colors.bg, paddingTop: insets.top }}>
+      {pack.chrome === 'sketch' && <RuledPaper />}
       {header}
       {body}
     </View>
@@ -154,12 +173,12 @@ export function Header({ title, onBack, right }: { title: string; onBack?: () =>
           hitSlop={8}
           style={({ pressed }) => ({ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.5 : 1 })}
         >
-          <Ionicons name={pack.id === 'paper' ? 'arrow-back' : 'chevron-back'} size={24} color={pack.colors.text} />
+          <Ionicons name={pack.chrome === 'sketch' ? 'arrow-back' : 'chevron-back'} size={24} color={pack.colors.text} />
         </Pressable>
       ) : (
         <View style={{ width: space.sm }} />
       )}
-      <Txt variant={pack.id === 'paper' ? 'label' : 'headline'} color={pack.colors.text} style={{ flex: 1 }}>
+      <Txt variant={pack.chrome === 'sketch' ? 'title' : 'headline'} color={pack.colors.text} style={{ flex: 1 }}>
         {title}
       </Txt>
       {right}
@@ -185,13 +204,15 @@ export function Surface({
   const c = pack.colors;
   const look = (pressed: boolean): ViewStyle => {
     if (pack.chrome === 'bevel') return { backgroundColor: c.surface, padding: space.md, ...bevel() };
-    if (pack.chrome === 'hairline')
+    if (pack.chrome === 'sketch')
+      // index card on the notebook
       return {
         backgroundColor: pressed ? c.surfaceAlt : c.surface,
         borderRadius: pack.radius.card,
-        borderWidth: StyleSheet.hairlineWidth * 2,
+        borderWidth: 1,
         borderColor: c.border,
         padding: space.md,
+        boxShadow: '0 2px 0 rgba(42, 41, 38, 0.10)',
       };
     return {
       backgroundColor: pressed ? c.surfaceAlt : c.surface,
@@ -235,7 +256,8 @@ export function Btn({
   const { pack } = useDesign();
   const c = pack.colors;
   const retro = pack.chrome === 'bevel';
-  const fg = retro ? '#000' : variant === 'primary' ? c.onAccent : variant === 'secondary' ? c.text : c.accent;
+  const hand = pack.chrome === 'sketch';
+  const fg = retro || (hand && variant !== 'ghost') ? (retro ? '#000' : INK) : variant === 'primary' ? c.onAccent : variant === 'secondary' ? c.text : c.accent;
   return (
     <Pressable
       onPress={onPress}
@@ -255,6 +277,17 @@ export function Btn({
         },
         retro
           ? { backgroundColor: c.surface, ...bevel(pressed), ...(variant === 'primary' ? { outlineWidth: 1, outlineColor: '#000', outlineStyle: 'solid' } : null) }
+          : hand
+          ? variant === 'ghost'
+            ? { opacity: disabled ? 0.45 : pressed ? 0.6 : 1 }
+            : {
+                ...SKETCH_RADII,
+                borderWidth: 2,
+                borderColor: INK,
+                backgroundColor: variant === 'primary' ? pack.marker : 'transparent',
+                opacity: disabled ? 0.45 : pressed ? 0.7 : 1,
+                transform: [{ rotate: '-0.6deg' }],
+              }
           : {
               borderRadius: pack.radius.control,
               borderCurve: 'continuous',
@@ -265,7 +298,7 @@ export function Btn({
       ]}
     >
       {icon && <Ionicons name={icon} size={18} color={fg} />}
-      <Text style={{ color: fg, fontFamily: pack.fonts.medium, fontSize: retro ? 22 : 15.5, letterSpacing: pack.labelCaps && !retro ? 0.6 : 0 }}>
+      <Text style={{ color: fg, fontFamily: pack.fonts.medium, fontSize: retro ? 22 : hand ? 20 : 15.5, letterSpacing: pack.labelCaps && !retro ? 0.6 : 0, textDecorationLine: hand && variant === 'ghost' ? 'underline' : 'none' }}>
         {title}
       </Text>
     </Pressable>
@@ -322,9 +355,11 @@ export function HoldButton({
 
   const width = fill.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
   const quiet = tone === 'quiet';
-  const bg = retro ? c.surface : quiet ? c.surfaceAlt : c.accent;
-  const fg = retro ? '#000' : quiet ? c.text : c.onAccent;
-  const fillColor = retro ? BEVEL.titleBar : quiet ? c.border : `${c.onAccent}33`;
+  const hand = pack.chrome === 'sketch';
+  const bg = retro ? c.surface : hand ? (quiet ? 'transparent' : pack.marker!) : quiet ? c.surfaceAlt : c.accent;
+  const fg = retro ? '#000' : hand ? INK : quiet ? c.text : c.onAccent;
+  // pencil shading fills the button while you hold (sketch)
+  const fillColor = retro ? BEVEL.titleBar : hand ? 'rgba(42, 41, 38, 0.22)' : quiet ? c.border : `${c.onAccent}33`;
 
   return (
     <Pressable
@@ -341,13 +376,17 @@ export function HoldButton({
       }}
       style={[
         { height: 62, overflow: 'hidden', justifyContent: 'center', opacity: disabled ? 0.45 : 1, backgroundColor: bg },
-        retro ? bevel(holding) : { borderRadius: pack.radius.control, borderCurve: 'continuous' },
+        retro
+          ? bevel(holding)
+          : hand
+          ? { ...SKETCH_RADII, borderWidth: 2.5, borderColor: INK, transform: [{ rotate: '-0.5deg' }] }
+          : { borderRadius: pack.radius.control, borderCurve: 'continuous' },
       ]}
     >
       <Animated.View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width, backgroundColor: fillColor }} />
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm }}>
         {icon && <Ionicons name={icon} size={20} color={retro && holding ? '#000' : fg} />}
-        <Text style={{ color: fg, fontFamily: pack.fonts.strong, fontSize: retro ? 24 : 16.5, letterSpacing: pack.labelCaps && !retro ? 0.8 : 0 }}>
+        <Text style={{ color: fg, fontFamily: pack.fonts.strong, fontSize: retro ? 24 : hand ? 30 : 16.5, letterSpacing: pack.labelCaps && !retro ? 0.8 : 0 }}>
           {holding && holdingTitle ? holdingTitle : title}
         </Text>
       </View>
@@ -363,10 +402,15 @@ export function Chip({
   onPress,
   disabled,
   accessibilityLabel,
+  tint,
+  tilt = 0,
 }: {
   icon: IconName;
   label: string;
   ok: boolean;
+  /** sticky-note colour and tilt (sketch only) */
+  tint?: string;
+  tilt?: number;
   onPress?: () => void;
   disabled?: boolean;
   accessibilityLabel?: string;
@@ -385,8 +429,13 @@ export function Chip({
         { flex: 1, minHeight: 64, alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: space.sm, opacity: disabled ? 0.5 : 1 },
         retro
           ? { backgroundColor: c.surface, ...bevel(pressed) }
-          : pack.chrome === 'hairline'
-          ? { borderWidth: StyleSheet.hairlineWidth * 2, borderColor: c.border, borderRadius: pack.radius.chip, backgroundColor: pressed ? c.surfaceAlt : 'transparent' }
+          : pack.chrome === 'sketch'
+          ? {
+              backgroundColor: tint ?? '#FBE7A1',
+              borderRadius: 2,
+              transform: [{ rotate: `${tilt}deg` }, { translateY: pressed ? 2 : 0 }],
+              boxShadow: '0 3px 4px rgba(42, 41, 38, 0.18)',
+            }
           : { backgroundColor: pressed ? c.border : c.surfaceAlt, borderRadius: pack.id === 'field' ? 22 : 18, borderCurve: 'continuous' },
       ]}
     >
@@ -435,7 +484,7 @@ export function Row({
         paddingVertical: space.sm,
         opacity: disabled ? 0.45 : pressed ? 0.6 : 1,
         borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth * (pack.chrome === 'bevel' ? 2 : 1),
-        borderBottomColor: pack.chrome === 'bevel' ? BEVEL.shadow : c.border,
+        borderBottomColor: pack.chrome === 'bevel' ? BEVEL.shadow : pack.chrome === 'sketch' ? '#D9E0E6' : c.border,
       }}
     >
       {icon && <Ionicons name={icon} size={20} color={c.text} />}
@@ -478,6 +527,13 @@ export function Toggle({ value, onChange, label, disabled }: { value: boolean; o
       </Pressable>
     );
   }
+  if (pack.chrome === 'sketch') {
+    return (
+      <Pressable onPress={() => onChange(!value)} disabled={disabled} hitSlop={10} {...a11y} style={{ width: 30, height: 30, borderWidth: 2, borderColor: INK, borderTopLeftRadius: 6, borderTopRightRadius: 3, borderBottomRightRadius: 7, borderBottomLeftRadius: 2, alignItems: 'center', justifyContent: 'center', opacity: disabled ? 0.45 : 1, backgroundColor: c.surface }}>
+        {value && <Ionicons name="checkmark" size={30} color={c.accent} style={{ marginTop: -6, marginLeft: 6 }} />}
+      </Pressable>
+    );
+  }
   const W = 50;
   const H = 30;
   return (
@@ -489,7 +545,7 @@ export function Toggle({ value, onChange, label, disabled }: { value: boolean; o
       style={{
         width: W,
         height: H,
-        borderRadius: pack.id === 'paper' ? 3 : H / 2,
+        borderRadius: H / 2,
         backgroundColor: value ? c.accent : c.border,
         padding: 3,
         opacity: disabled ? 0.45 : 1,
@@ -499,7 +555,7 @@ export function Toggle({ value, onChange, label, disabled }: { value: boolean; o
         style={{
           width: H - 6,
           height: H - 6,
-          borderRadius: pack.id === 'paper' ? 2 : (H - 6) / 2,
+          borderRadius: (H - 6) / 2,
           backgroundColor: value ? c.onAccent : c.surface,
           transform: [{ translateX: x.interpolate({ inputRange: [0, 1], outputRange: [0, W - H] }) }],
         }}

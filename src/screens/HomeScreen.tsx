@@ -7,7 +7,8 @@ import { useWakeFlow } from '../context/WakeFlowContext';
 import { useDesign } from '../context/DesignContext';
 import { BEVEL, DesignPack } from '../theme/packs';
 import { bevel, Chip, HoldButton, onBg, onBgDim, Screen, space, Surface, Txt } from '../components/ui';
-import { EmberHalo, FieldHill } from '../components/RingVisuals';
+import { FieldHill } from '../components/RingVisuals';
+import Svg, { Path } from 'react-native-svg';
 import TimeSheet from './TimeSheet';
 import { armBlockers, DAY_SHORT, describeDays, formatIn, pad2, usePermissions } from '../logic/useReadiness';
 import type { RootStack } from '../navigation/types';
@@ -76,7 +77,7 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<RootSt
     <Screen contentStyle={{ flexGrow: 1 }}>
       {/* Top bar */}
       <View style={styles.topBar}>
-        <Text style={{ fontFamily: retro ? pack.fonts.strong : pack.fonts.medium, fontSize: retro ? 28 : 15, color: onBg(pack), letterSpacing: pack.labelCaps && !retro ? 2 : 0 }}>
+        <Text style={{ fontFamily: retro || pack.chrome === 'sketch' ? pack.fonts.strong : pack.fonts.medium, fontSize: retro ? 28 : pack.chrome === 'sketch' ? 32 : 15, color: onBg(pack), letterSpacing: pack.labelCaps && !retro ? 2 : 0 }}>
           {pack.labelCaps && !retro ? 'CLOCKGUARD' : 'ClockGuard'}
         </Text>
         <Pressable
@@ -95,7 +96,7 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<RootSt
         </Pressable>
       </View>
 
-      <View style={{ flex: 1, justifyContent: pack.id === 'paper' ? 'flex-start' : 'center', minHeight: 260 }}>
+      <View style={{ flex: 1, justifyContent: 'center', minHeight: 260 }}>
         <Hero pack={pack} time={timeText} days={daysText} inText={inText} armed={armed} repeatDays={settings.repeatDays} onPress={openTime} />
       </View>
 
@@ -123,9 +124,11 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<RootSt
             ok
             disabled={armed}
             onPress={() => navigation.navigate('Movement')}
+            tint="#FBE7A1"
+            tilt={-2}
           />
-          <Chip icon={retro ? 'barcode-sharp' : 'barcode-outline'} label="Item" ok={gate.itemOk} disabled={armed} onPress={() => navigation.navigate('Item')} />
-          <Chip icon={retro ? 'keypad-sharp' : 'keypad-outline'} label="PIN" ok={gate.pinOk} disabled={armed} onPress={() => navigation.navigate('Pin')} />
+          <Chip icon={retro ? 'barcode-sharp' : 'barcode-outline'} label="Item" ok={gate.itemOk} disabled={armed} onPress={() => navigation.navigate('Item')} tint="#F6CFC4" tilt={1.5} />
+          <Chip icon={retro ? 'keypad-sharp' : 'keypad-outline'} label="PIN" ok={gate.pinOk} disabled={armed} onPress={() => navigation.navigate('Pin')} tint="#D4E8C8" tilt={-1} />
         </View>
       </View>
 
@@ -193,7 +196,7 @@ function Hero({
   );
   const big = (color: string, size = pack.heroSize) => (
     <Text
-      style={{ fontFamily: pack.fonts.display, fontSize: size, lineHeight: size * 1.08, color, fontVariant: ['tabular-nums'], letterSpacing: pack.id === 'paper' ? -3 : -1 }}
+      style={{ fontFamily: pack.fonts.display, fontSize: size, lineHeight: size * 1.08, color, fontVariant: ['tabular-nums'], letterSpacing: pack.chrome === 'sketch' ? 0 : pack.id === 'lumen' ? -2 : -1 }}
       adjustsFontSizeToFit
       numberOfLines={1}
     >
@@ -202,23 +205,75 @@ function Hero({
   );
 
   if (pack.id === 'paper') {
-    // Printed: left-aligned numerals, a ruled line, the week printed underneath.
+    // Notebook: an index card taped to the page, the time written in marker,
+    // the chosen days circled in red pen.
+    const hand = (size: number, color: string, text: string) => (
+      <Text style={{ fontFamily: pack.fonts.display, fontSize: size, color }}>{text}</Text>
+    );
     return (
-      <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={a11y} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, paddingTop: space.lg })}>
-        {status}
-        {big(c.text)}
-        <View style={{ height: 1.5, backgroundColor: c.text, marginVertical: space.sm }} />
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <View style={{ flexDirection: 'row', gap: 14 }}>
-            {DAY_SHORT.map((d, i) => (
-              <Text key={i} style={{ fontFamily: repeatDays.includes(i) ? pack.fonts.strong : pack.fonts.body, fontSize: 15, color: repeatDays.includes(i) ? c.text : c.border }}>
-                {d}
-              </Text>
-            ))}
+      <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={a11y} style={({ pressed }) => ({ transform: [{ rotate: '-1.2deg' }], opacity: pressed ? 0.75 : 1 })}>
+        <View style={{ backgroundColor: c.surface, borderWidth: 1, borderColor: c.border, paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.md, boxShadow: '0 3px 6px rgba(42, 41, 38, 0.12)' }}>
+          {/* tape */}
+          <View style={{ position: 'absolute', top: -12, alignSelf: 'center', left: '38%', width: 92, height: 24, backgroundColor: 'rgba(236, 222, 170, 0.75)', transform: [{ rotate: '3deg' }] }} />
+          <View style={{ height: 1.5, backgroundColor: '#E3A49A', position: 'absolute', top: 44, left: 0, right: 0 }} />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            {hand(26, c.textDim, armed ? 'Set for' : 'Wake me at')}
+            {armed && <Ionicons name="lock-closed" size={18} color={c.accent} />}
           </View>
-          <Txt variant="caption" color={armed ? c.accent : c.textDim}>
-            {inText}
-          </Txt>
+          {big(c.text)}
+          <Svg width="70%" height={12} viewBox="0 0 200 12" preserveAspectRatio="none" style={{ marginTop: -14 }}>
+            <Path d="M2 8 C 40 2, 80 11, 120 6 S 180 4, 198 7" stroke={c.accent} strokeWidth={3} fill="none" strokeLinecap="round" />
+          </Svg>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: space.md }}>
+            {DAY_SHORT.map((d, i) => {
+              const on = repeatDays.includes(i);
+              return (
+                <View key={i} style={{ width: 34, height: 34, alignItems: 'center', justifyContent: 'center', borderWidth: on ? 2 : 0, borderColor: c.accent, borderTopLeftRadius: 18, borderTopRightRadius: 15, borderBottomRightRadius: 19, borderBottomLeftRadius: 14 }}>
+                  <Text style={{ fontFamily: pack.fonts.strong, fontSize: 24, color: on ? c.text : c.border }}>{d}</Text>
+                </View>
+              );
+            })}
+          </View>
+          {inText ? <View style={{ alignItems: 'flex-end', marginTop: space.sm }}>{hand(26, armed ? c.accent : c.textDim, inText)}</View> : null}
+        </View>
+      </Pressable>
+    );
+  }
+
+  if (pack.id === 'lumen') {
+    // Bento: one big time tile, then two small tiles.
+    const tile = { backgroundColor: c.surface, borderRadius: pack.radius.card, borderCurve: 'continuous' as const, padding: space.lg - 4 };
+    return (
+      <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={a11y} style={({ pressed }) => ({ gap: space.sm, opacity: pressed ? 0.85 : 1 })}>
+        <View style={[tile, { paddingVertical: space.lg }]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Txt variant="caption">Next alarm</Txt>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, height: 26, borderRadius: 13, backgroundColor: armed ? c.accent : c.surfaceAlt }}>
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: armed ? c.onAccent : c.textDim }} />
+              <Text style={{ fontFamily: pack.fonts.medium, fontSize: 12, color: armed ? c.onAccent : c.textDim }}>{armed ? 'Armed' : 'Off'}</Text>
+            </View>
+          </View>
+          <View style={{ marginTop: space.md }}>{big(c.text)}</View>
+          <View style={{ flexDirection: 'row', gap: 6, marginTop: space.md }}>
+            {DAY_SHORT.map((d, i) => {
+              const on = repeatDays.includes(i);
+              return (
+                <View key={i} style={{ flex: 1, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? `${c.accent}22` : 'transparent', borderWidth: on ? 0 : 1, borderColor: c.border }}>
+                  <Text style={{ fontFamily: pack.fonts.medium, fontSize: 12, color: on ? c.accent : c.textDim }}>{d}</Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+        <View style={{ flexDirection: 'row', gap: space.sm }}>
+          <View style={[tile, { flex: 1 }]}>
+            <Txt variant="caption">Rings</Txt>
+            <Text style={{ fontFamily: pack.fonts.strong, fontSize: 20, color: armed ? c.accent : c.text, marginTop: 4 }}>{inText || '—'}</Text>
+          </View>
+          <View style={[tile, { flex: 1 }]}>
+            <Txt variant="caption">Repeat</Txt>
+            <Text style={{ fontFamily: pack.fonts.strong, fontSize: 20, color: c.text, marginTop: 4 }} numberOfLines={1}>{days}</Text>
+          </View>
         </View>
       </Pressable>
     );
@@ -272,27 +327,7 @@ function Hero({
     );
   }
 
-  // Ember
-  return (
-    <Surface onPress={onPress} accessibilityLabel={a11y} style={{ alignItems: 'center', paddingVertical: space.xl, overflow: 'hidden' }}>
-      <EmberHalo color={c.accent} strength={armed ? 1 : 0.35} />
-      {status}
-      {big(c.text)}
-      <View style={{ flexDirection: 'row', gap: space.sm, alignItems: 'center' }}>
-        <Txt variant="body" color={c.textDim}>
-          {days}
-        </Txt>
-        {inText ? (
-          <>
-            <View style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: c.textDim }} />
-            <Txt variant="body" color={armed ? c.accent : c.textDim}>
-              {inText}
-            </Txt>
-          </>
-        ) : null}
-      </View>
-    </Surface>
-  );
+  return null;
 }
 
 const styles = StyleSheet.create({

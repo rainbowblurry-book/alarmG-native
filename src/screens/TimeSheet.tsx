@@ -62,13 +62,15 @@ export default function TimeSheet({ visible, onClose }: { visible: boolean; onCl
                 { flex: 1, height: 46, alignItems: 'center', justifyContent: 'center' },
                 retro
                   ? { backgroundColor: on ? '#0B4F4E' : c.surface, ...bevel(on || pressed) }
+                  : pack.chrome === 'sketch'
+                  ? { borderWidth: on ? 2.5 : 1, borderColor: on ? c.accent : c.border, borderTopLeftRadius: 22, borderTopRightRadius: 17, borderBottomRightRadius: 23, borderBottomLeftRadius: 15, backgroundColor: pressed ? c.surfaceAlt : 'transparent' }
                   : {
                       borderRadius: pack.radius.chip === 999 ? 23 : pack.radius.chip,
                       backgroundColor: on ? c.accent : pressed ? c.border : c.surfaceAlt,
                     },
               ]}
             >
-              <Text style={{ fontFamily: pack.fonts.medium, fontSize: retro ? 21 : 15, color: retro ? (on ? '#F2F2E6' : '#000') : on ? c.onAccent : c.text }}>{d}</Text>
+              <Text style={{ fontFamily: pack.fonts.medium, fontSize: retro ? 21 : pack.chrome === 'sketch' ? 22 : 15, color: retro ? (on ? '#F2F2E6' : '#000') : pack.chrome === 'sketch' ? (on ? c.text : c.textDim) : on ? c.onAccent : c.text }}>{d}</Text>
             </Pressable>
           );
         })}

@@ -1,9 +1,10 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Defs, Ellipse, Line, Path, RadialGradient, Rect, Stop, LinearGradient as SvgLinear } from 'react-native-svg';
+import { DesignPack } from '../theme/packs';
+import { RuledPaper } from './ui';
 
 const SCANLINES = Array.from({ length: 260 }, (_, i) => i);
-import { DesignPack } from '../theme/packs';
 
 /**
  * Dim, calm visuals for the ringing / snoozed screens (one per design pack).
@@ -15,20 +16,24 @@ export function RingBackdrop({ pack, progress }: { pack: DesignPack; progress: n
   const r = pack.ring;
   const p = Math.max(0, Math.min(1, progress));
   switch (pack.id) {
-    case 'ember':
-      // A slow "sunrise lamp": the warm glow grows from the bottom as you move.
+    case 'lumen':
+      // A soft volt glow behind the progress ring that brightens as you move.
       return (
-        <View style={StyleSheet.absoluteFill} pointerEvents="none"><Svg width="100%" height="100%" viewBox="0 0 100 200" preserveAspectRatio="none">
-          <Defs>
-            <RadialGradient id="cgEmberGlow">
-              <Stop offset="0" stopColor={r.glow} stopOpacity={0.2 + p * 0.3} />
-              <Stop offset="0.5" stopColor={r.glow} stopOpacity={0.06 + p * 0.12} />
-              <Stop offset="1" stopColor={r.glow} stopOpacity={0} />
-            </RadialGradient>
-          </Defs>
-          <Ellipse cx="50" cy="205" rx={75 + p * 45} ry={55 + p * 75} fill="url(#cgEmberGlow)" />
-        </Svg></View>
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Svg width="100%" height="100%" viewBox="0 0 100 200" preserveAspectRatio="none">
+            <Defs>
+              <RadialGradient id="cgLumenGlow">
+                <Stop offset="0" stopColor={r.glow} stopOpacity={0.08 + p * 0.16} />
+                <Stop offset="1" stopColor={r.glow} stopOpacity={0} />
+              </RadialGradient>
+            </Defs>
+            <Ellipse cx="50" cy="100" rx={45 + p * 25} ry={32 + p * 18} fill="url(#cgLumenGlow)" />
+          </Svg>
+        </View>
       );
+    case 'paper':
+      // The notebook at night: dark page, faint ruled lines and margin.
+      return <RuledPaper line="#26231F" margin="#3A2C27" gap={38} />;
     case 'field': {
       // A sun rising over a hill. The sun climbs with movement.
       const sunCy = 186 - p * 42; // viewBox units (0-200)
@@ -71,7 +76,7 @@ export function RingBackdrop({ pack, progress }: { pack: DesignPack; progress: n
         </View>
       );
     default:
-      return null; // Paper: flat sepia
+      return null;
   }
 }
 
@@ -105,34 +110,31 @@ export function MoveProgress({ pack, count, target }: { pack: DesignPack; count:
   }
 
   if (pack.id === 'paper') {
-    // Printed dial: 60 ticks, lit ones show progress.
-    const N = 60;
-    const lit = Math.round(p * N);
-    const size = 200;
-    const c = size / 2;
+    // Hand-drawn tally marks: four strokes and a slash per group of five.
+    const groups = Math.ceil(target / 5);
+    const jitter = (i: number) => Math.sin(i * 12.9898) * 1.6;
     return (
-      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-        <Svg width={size} height={size}>
-          {Array.from({ length: N }, (_, i) => {
-            const a = (i / N) * Math.PI * 2 - Math.PI / 2;
-            const long = i % 5 === 0;
-            const r1 = c - 4;
-            const r2 = c - (long ? 18 : 11);
-            return (
-              <Line
-                key={i}
-                x1={c + r1 * Math.cos(a)}
-                y1={c + r1 * Math.sin(a)}
-                x2={c + r2 * Math.cos(a)}
-                y2={c + r2 * Math.sin(a)}
-                stroke={i < lit ? r.accent : r.track}
-                strokeWidth={long ? 2.4 : 1.4}
-                strokeLinecap="butt"
-              />
-            );
-          })}
-        </Svg>
-        {label}
+      <View style={{ alignItems: 'center', gap: 6 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', maxWidth: 300, gap: 10 }}>
+          {Array.from({ length: groups }, (_, g) => (
+            <Svg key={g} width={52} height={58} viewBox="0 0 52 58">
+              {[0, 1, 2, 3].map((k) => {
+                const i = g * 5 + k;
+                if (i >= target) return null;
+                const x = 8 + k * 11;
+                return (
+                  <Line key={k} x1={x + jitter(i)} y1={6 + jitter(i + 3)} x2={x - jitter(i + 1)} y2={52 + jitter(i + 5)} stroke={i < count ? r.accent : r.track} strokeWidth={3} strokeLinecap="round" />
+                );
+              })}
+              {g * 5 + 4 < target && (
+                <Line x1={2} y1={44 + jitter(g)} x2={50} y2={12 + jitter(g + 2)} stroke={g * 5 + 4 < count ? r.accent : r.track} strokeWidth={3} strokeLinecap="round" />
+              )}
+            </Svg>
+          ))}
+        </View>
+        <Text style={{ fontFamily: pack.fonts.display, fontSize: 34, color: r.text }}>
+          {count} of {target}
+        </Text>
       </View>
     );
   }
@@ -146,28 +148,27 @@ export function MoveProgress({ pack, count, target }: { pack: DesignPack; count:
     );
   }
 
-  // Ember: thin arc ring
-  const size = 190;
-  const stroke = 3;
-  const rad = (size - stroke * 2) / 2;
-  const circ = 2 * Math.PI * rad;
+  // Lumen: segmented ring, one segment per move.
+  const size = 210;
+  const n = Math.max(1, Math.min(target, 50));
+  const lit = Math.round(p * n);
+  const cx = size / 2;
+  const rad = size / 2 - 8;
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      <Svg width={size} height={size} style={{ transform: [{ rotate: '-90deg' }] }}>
-        <Circle cx={size / 2} cy={size / 2} r={rad} stroke={r.track} strokeWidth={stroke} fill="none" />
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={rad}
-          stroke={r.accent}
-          strokeWidth={stroke}
-          fill="none"
-          strokeDasharray={`${circ} ${circ}`}
-          strokeDashoffset={circ * (1 - p)}
-          strokeLinecap="round"
-        />
+      <Svg width={size} height={size}>
+        {Array.from({ length: n }, (_, i) => {
+          const gapA = Math.min(0.08, (Math.PI * 2) / n / 3);
+          const a1 = (i / n) * Math.PI * 2 - Math.PI / 2 + gapA / 2;
+          const a2 = ((i + 1) / n) * Math.PI * 2 - Math.PI / 2 - gapA / 2;
+          const d = `M ${cx + rad * Math.cos(a1)} ${cx + rad * Math.sin(a1)} A ${rad} ${rad} 0 0 1 ${cx + rad * Math.cos(a2)} ${cx + rad * Math.sin(a2)}`;
+          return <Path key={i} d={d} stroke={i < lit ? r.accent : r.track} strokeWidth={8} strokeLinecap="round" fill="none" />;
+        })}
       </Svg>
-      {label}
+      <View style={{ position: 'absolute', alignItems: 'center' }}>
+        <Text style={{ fontFamily: pack.fonts.display, fontSize: 48, color: r.text, fontVariant: ['tabular-nums'] }}>{count}</Text>
+        <Text style={{ fontFamily: pack.fonts.body, fontSize: 13, color: r.textDim }}>of {target} moves</Text>
+      </View>
     </View>
   );
 }
@@ -178,21 +179,6 @@ export function FieldHill({ color, sun }: { color: string; sun: string }) {
     <Svg width="100%" height={70} viewBox="0 0 300 70" preserveAspectRatio="none" pointerEvents="none">
       <Circle cx="210" cy="40" r="14" fill={sun} opacity={0.85} />
       <Path d="M0 50 C 60 26, 120 30, 170 44 S 260 58, 300 40 L300 70 L0 70 Z" fill={color} />
-    </Svg>
-  );
-}
-
-/** Soft glow behind Ember's Home clock when armed. */
-export function EmberHalo({ color, strength }: { color: string; strength: number }) {
-  return (
-    <Svg style={StyleSheet.absoluteFill} viewBox="0 0 100 100" preserveAspectRatio="none" pointerEvents="none">
-      <Defs>
-        <RadialGradient id="cgEmberHalo">
-          <Stop offset="0" stopColor={color} stopOpacity={0.22 * strength} />
-          <Stop offset="1" stopColor={color} stopOpacity={0} />
-        </RadialGradient>
-      </Defs>
-      <Ellipse cx="50" cy="55" rx="60" ry="55" fill="url(#cgEmberHalo)" />
     </Svg>
   );
 }

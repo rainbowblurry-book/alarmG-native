@@ -39,7 +39,7 @@ Legend:
 - Device test to add: arm, let it ring without touching it. At about 90 minutes it should stop, the "Missed alarm" notification appears, and the Alarm tab still shows it armed for the next day. Quicker check: Settings → Test alarm and leave it; it also stops at 90 minutes.
 
 ## On branch `feature/ui-variants`: new UI (UNTESTED on device)
-- 4 designs in one APK: **Ember** (warm dark), **Paper** (light, sepia when ringing), **Field** (moss dark, sun-over-hill ringing), **Signal** (retro 90s desktop, amber CRT ringing). Switch in Settings → Design (testing only) [code].
+- 4 designs in one APK: **Lumen** (modern graphite + volt, bento tiles; replaced Ember), **Paper** (handwritten notebook; dark notebook with tally marks when ringing), **Field** (moss dark, sun-over-hill ringing), **Signal** (retro 90s desktop, amber CRT ringing). Switch in Settings → Design (testing only) [code].
 - Home without tabs, hold-to-arm / hold-to-cancel, Mission chips (Move · Item · PIN), time/days bottom sheet, grouped Settings, first-launch "Get ready" checklist, crash screen with a Copy button [code].
 - Engine (`modules/clockguard-alarm`) **not changed**. Ringing logic (movement gate, barcode check, PIN check, Back blocking) is the same code with a new look [code].
 - Checked: `tsc` clean, `expo prebuild` OK (engine, svg and clipboard autolinked), every screen of all 4 designs rendered on web with a mocked engine and reviewed [code].
@@ -63,3 +63,4 @@ Legend:
 | [#1](https://github.com/rainbowblurry-book/alarmG-native/actions/runs/41296161793) | `73e5cb2` old + new engine | Compile OK [CI] |
 | [#2](https://github.com/rainbowblurry-book/alarmG-native/actions/runs/41297448823) | `6677b78` new engine only | Compile OK, engine linked, 0 warnings in our code [CI] |
 | [#3](https://github.com/rainbowblurry-book/alarmG-native/actions/runs/41301001456) | `f7e5688` | Signed APK produced; the one installed and device-tested [CI] |
+| [#5](https://github.com/rainbowblurry-book/alarmG-native/actions/runs/41319164432) | `ec6dfcd` | First UI build (Ember/Paper v1); signed APK produced, superseded by the next build [CI] |

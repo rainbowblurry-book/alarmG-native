@@ -37,11 +37,11 @@ function Input(props: React.ComponentProps<typeof TextInput>) {
         },
         retro
           ? { backgroundColor: '#FFFFFF', ...bevel(true) }
+          : pack.chrome === 'sketch'
+          ? { backgroundColor: 'transparent', borderBottomWidth: 2, borderColor: c.text, fontSize: 22, paddingHorizontal: space.xs }
           : {
               backgroundColor: pack.mode === 'light' ? c.bg : c.surfaceAlt,
               borderRadius: Math.min(pack.radius.control, 16),
-              borderWidth: pack.chrome === 'hairline' ? 1 : 0,
-              borderColor: c.border,
             },
         props.style,
       ]}

@@ -7,13 +7,15 @@
  *   #FFF (Material dark-theme guidance: pure white "vibrates" on dark, pure black smears on OLED).
  * - Signal (retro): 90s desktop teal #008080 and the classic 3-D chrome greys
  *   #C0C0C0 / #808080 / #DFDFDF; ringing uses amber CRT phosphor (~#FFB000), dimmed.
+ * - Lumen: graphite base (#0E0F11), off-white text, one desaturated-enough volt accent.
+ * - Paper: handwriting fonts Caveat (numerals) + Patrick Hand (text), both OFL.
  * - Ringing/snooze palettes are dim in every pack: no white, no red, low contrast steps.
  *
  * Packs are sellable later: `tier` marks premium packs, isPackUnlocked() gates them.
  * Today every pack is unlocked. No purchases, no paywall (DECISIONS D-06).
  */
 
-export type PackId = 'ember' | 'paper' | 'field' | 'signal';
+export type PackId = 'lumen' | 'paper' | 'field' | 'signal';
 
 export type Palette = {
   bg: string;
@@ -58,94 +60,97 @@ export type DesignPack = {
   /** extra letter spacing for small labels */
   labelCaps: boolean;
   radius: { card: number; control: number; chip: number };
-  /** 'bevel' = 90s 3-D chrome (Signal); 'soft' = flat modern surfaces */
-  chrome: 'soft' | 'bevel' | 'hairline';
+  /** 'bevel' = 90s 3-D chrome (Signal); 'sketch' = hand-drawn notebook (Paper); 'soft' = flat modern */
+  chrome: 'soft' | 'bevel' | 'sketch';
   /** big clock numeral size on Home */
   heroSize: number;
+  /** highlighter colour for primary buttons (sketch only) */
+  marker?: string;
 };
 
 export const PACKS: Record<PackId, DesignPack> = {
-  // 1. Ember: bedside lamp at night. Warm charcoal, one ember-orange accent.
-  ember: {
-    id: 'ember',
-    name: 'Ember',
-    tagline: 'Warm night light',
+  // 1. Lumen: modern graphite with one volt-lime accent, wide numerals, bento tiles.
+  lumen: {
+    id: 'lumen',
+    name: 'Lumen',
+    tagline: 'Graphite, volt, bento',
     tier: 'free',
     mode: 'dark',
     colors: {
-      bg: '#14110F',
-      surface: '#1D1916',
-      surfaceAlt: '#262019',
-      border: '#332B24',
-      text: '#EEE6DC',
-      textDim: '#A2978A',
-      accent: '#E8793F',
-      onAccent: '#1A0E07',
-      ok: '#9DBB7E',
-      warn: '#E2AA55',
-      danger: '#E0715A',
+      bg: '#0E0F11',
+      surface: '#17181B',
+      surfaceAlt: '#212226',
+      border: '#2B2C31',
+      text: '#EDEDEF',
+      textDim: '#9A9BA2',
+      accent: '#D4F25C',
+      onAccent: '#12140A',
+      ok: '#B5E48C',
+      warn: '#F2C14E',
+      danger: '#F2786D',
     },
     ring: {
-      bg: '#0D0A08',
-      text: '#BFAE9A',
-      textDim: '#7E6F61',
-      accent: '#C8632F',
-      onAccent: '#140A05',
-      track: '#2A1F18',
-      glow: '#B4501F',
+      bg: '#08090A',
+      text: '#B4B6BB',
+      textDim: '#74767D',
+      accent: '#98AE45',
+      onAccent: '#08090A',
+      track: '#1C1E21',
+      glow: '#98AE45',
     },
     fonts: {
-      body: 'DMSans_400Regular',
-      medium: 'DMSans_500Medium',
-      strong: 'DMSans_700Bold',
-      display: 'Fraunces_300Light',
+      body: 'Manrope_400Regular',
+      medium: 'Manrope_600SemiBold',
+      strong: 'Manrope_800ExtraBold',
+      display: 'Unbounded_300Light',
     },
     labelCaps: false,
-    radius: { card: 26, control: 999, chip: 999 },
+    radius: { card: 28, control: 20, chip: 22 },
     chrome: 'soft',
-    heroSize: 88,
+    heroSize: 76,
   },
 
-  // 2. Paper: a printed desk clock. Warm off-white, ink black, one signal red (never on ringing).
+  // 2. Paper: a handwritten notebook. Ruled paper, graphite ink, red pen, a yellow highlighter.
   paper: {
     id: 'paper',
     name: 'Paper',
-    tagline: 'Printed, quiet, precise',
+    tagline: 'Handwritten notebook',
     tier: 'free',
     mode: 'light',
     colors: {
-      bg: '#F1EEE7',
-      surface: '#FAF8F3',
-      surfaceAlt: '#E6E1D6',
-      border: '#D3CCBE',
-      text: '#1C1B18',
-      textDim: '#6A655B',
-      accent: '#B83A25',
-      onAccent: '#FFF8F2',
-      ok: '#3E7A4E',
-      warn: '#A86A12',
+      bg: '#F3EEE2',
+      surface: '#FFFCF4',
+      surfaceAlt: '#ECE5D4',
+      border: '#D8CDB8',
+      text: '#2A2926',
+      textDim: '#6B655A',
+      accent: '#B8382A',
+      onAccent: '#FFF8F0',
+      ok: '#3C7A47',
+      warn: '#A5640F',
       danger: '#B23A26',
     },
-    // Paper turns sepia-dark when ringing: never bright white at 6 am.
+    // At night the notebook is dark: chalky handwriting, never bright white.
     ring: {
-      bg: '#1B1713',
-      text: '#C2B49C',
-      textDim: '#857A69',
-      accent: '#B08A58',
-      onAccent: '#1B1713',
-      track: '#2E2820',
-      glow: '#8C6B42',
+      bg: '#1A1815',
+      text: '#C9BFAE',
+      textDim: '#7F776A',
+      accent: '#C2A86E',
+      onAccent: '#1A1815',
+      track: '#34302A',
+      glow: '#6B5A3A',
     },
     fonts: {
-      body: 'Archivo_400Regular',
-      medium: 'Archivo_500Medium',
-      strong: 'Archivo_700Bold',
-      display: 'Archivo_200ExtraLight',
+      body: 'PatrickHand_400Regular',
+      medium: 'PatrickHand_400Regular',
+      strong: 'Caveat_700Bold',
+      display: 'Caveat_600SemiBold',
     },
-    labelCaps: true,
-    radius: { card: 4, control: 4, chip: 3 },
-    chrome: 'hairline',
-    heroSize: 104,
+    labelCaps: false,
+    radius: { card: 4, control: 14, chip: 4 },
+    chrome: 'sketch',
+    heroSize: 128,
+    marker: '#F6DF6B',
   },
 
   // 3. Field: early morning outdoors. Moss green and bone, soft rounded shapes.
@@ -232,8 +237,8 @@ export const PACKS: Record<PackId, DesignPack> = {
   },
 };
 
-export const PACK_ORDER: PackId[] = ['ember', 'paper', 'field', 'signal'];
-export const DEFAULT_PACK: PackId = 'ember';
+export const PACK_ORDER: PackId[] = ['lumen', 'paper', 'field', 'signal'];
+export const DEFAULT_PACK: PackId = 'lumen';
 
 /** Real Play Billing comes later (D-06). Until then every pack is unlocked. */
 export function isPackUnlocked(_id: PackId): boolean {

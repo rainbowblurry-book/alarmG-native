@@ -4,9 +4,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
-import { DMSans_400Regular, DMSans_500Medium, DMSans_700Bold } from '@expo-google-fonts/dm-sans';
-import { Fraunces_300Light } from '@expo-google-fonts/fraunces';
-import { Archivo_200ExtraLight, Archivo_400Regular, Archivo_500Medium, Archivo_700Bold } from '@expo-google-fonts/archivo';
+import { Manrope_400Regular, Manrope_600SemiBold, Manrope_800ExtraBold } from '@expo-google-fonts/manrope';
+import { Unbounded_300Light } from '@expo-google-fonts/unbounded';
+import { Caveat_600SemiBold, Caveat_700Bold } from '@expo-google-fonts/caveat';
+import { PatrickHand_400Regular } from '@expo-google-fonts/patrick-hand';
 import { Nunito_300Light, Nunito_400Regular, Nunito_600SemiBold, Nunito_800ExtraBold } from '@expo-google-fonts/nunito';
 import { VT323_400Regular } from '@expo-google-fonts/vt323';
 import AppNavigator from './src/navigation/AppNavigator';
@@ -18,14 +19,13 @@ import ErrorBoundary from './src/components/ErrorBoundary';
 
 /** All fonts are free Google Fonts (OFL), bundled with the app. */
 export const FONTS = {
-  DMSans_400Regular,
-  DMSans_500Medium,
-  DMSans_700Bold,
-  Fraunces_300Light,
-  Archivo_200ExtraLight,
-  Archivo_400Regular,
-  Archivo_500Medium,
-  Archivo_700Bold,
+  Manrope_400Regular,
+  Manrope_600SemiBold,
+  Manrope_800ExtraBold,
+  Unbounded_300Light,
+  Caveat_600SemiBold,
+  Caveat_700Bold,
+  PatrickHand_400Regular,
   Nunito_300Light,
   Nunito_400Regular,
   Nunito_600SemiBold,

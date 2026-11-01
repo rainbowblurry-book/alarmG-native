@@ -172,7 +172,10 @@ export default function RingingScreen() {
 
   // Per-design text casing on the ringing screen (Signal speaks like a terminal).
   const say = (s: string) => (retro ? s.toUpperCase() : s);
-  const T = (size: number) => ({ fontFamily: retro ? f.display : f.body, fontSize: retro ? size * 1.35 : size });
+  const hand = pack.chrome === 'sketch';
+  const T = (size: number) => ({ fontFamily: retro ? f.display : f.body, fontSize: retro ? size * 1.35 : hand ? size * 1.25 : size });
+  // Big clock size per design (wide Unbounded needs less, handwritten Caveat more).
+  const clockSize = retro ? 128 : hand ? 132 : pack.id === 'lumen' ? 70 : 96;
 
   const mainButton = (label: string, onPress: () => void, a11y: string) => (
     <Pressable
@@ -187,7 +190,7 @@ export default function RingingScreen() {
       ]}
     >
       <Ionicons name={retro ? 'scan-sharp' : 'scan'} size={20} color={retro ? r.accent : r.onAccent} />
-      <Text style={{ color: retro ? r.accent : r.onAccent, fontFamily: retro ? f.display : f.strong, fontSize: retro ? 26 : 17 }}>{label}</Text>
+      <Text style={{ color: retro ? r.accent : r.onAccent, fontFamily: retro ? f.display : f.strong, fontSize: retro ? 26 : hand ? 28 : 17 }}>{label}</Text>
     </Pressable>
   );
 
@@ -211,7 +214,7 @@ export default function RingingScreen() {
           <>
             <View style={styles.top}>
               <Text style={[{ color: r.textDim, letterSpacing: 2 }, T(12)]}>{retro ? '> WAKE UP_' : pack.labelCaps ? 'WAKE UP' : 'Wake up'}</Text>
-              <Text style={{ fontFamily: f.display, fontSize: retro ? 128 : 96, lineHeight: retro ? 120 : 104, color: r.text, fontVariant: ['tabular-nums'], letterSpacing: pack.id === 'paper' ? -3 : -1 }}>
+              <Text style={{ fontFamily: f.display, fontSize: clockSize, lineHeight: clockSize * (retro ? 0.94 : 1.08), color: r.text, fontVariant: ['tabular-nums'], letterSpacing: hand ? 0 : -1 }}>
                 {timeFormatted}
               </Text>
             </View>
@@ -272,7 +275,7 @@ export default function RingingScreen() {
               </Text>
             </View>
             <View style={styles.middle}>
-              <Text style={{ fontFamily: f.display, fontSize: retro ? 140 : 104, color: r.text, fontVariant: ['tabular-nums'] }}>{snoozeTimeFormatted}</Text>
+              <Text style={{ fontFamily: f.display, fontSize: clockSize * 1.08, color: r.text, fontVariant: ['tabular-nums'] }}>{snoozeTimeFormatted}</Text>
               <Text style={[{ color: r.textDim }, T(15)]}>
                 {say('Rings again at')} {new Date(alarm.snoozeUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
               </Text>
