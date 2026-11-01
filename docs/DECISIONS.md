@@ -22,7 +22,7 @@ Sources such as `3.md:906` mean `docs/chat-history/3.md`, line 906. "Code" means
 | D-09 | Lock the wheels, days, Setup and Settings tabs while armed | Can't weaken the alarm after arming | 7.md:1300-1358; code | Active |
 | D-10 | Wheels show the current time when not armed | Faster to set | 8.md:2172 (user); code `useCurrentTimeWhenIdle` | Active |
 | D-11 | Disarm sets the alarm to "not armed" (re-arm every night) | User request, 8.md:2172 | 8.md:2172; code `dismissWake` | **Superseded → D-21** |
-| D-12 | Developer tools (Preview, Exit Preview, Simulate Pro) hidden behind code `Coderman880` | Friend testing without removing tools | 7.md:3830-3842, 4286; issue #1 (27 Sep) | **Superseded → D-22** |
+| D-12 | Developer tools (Preview, Exit Preview, Simulate Pro) hidden behind a developer unlock code (removed; code no longer used) | Friend testing without removing tools | 7.md:3830-3842, 4286; issue #1 (27 Sep) | **Superseded → D-22** |
 | D-13 | Themes: 5 designer themes, then a 6th "Watch" | Visual identity experiments | 4.md:2363; 6.md:2263 | **Superseded → D-23** |
 | D-14 | Wallpaper upload and custom alarm tone | Personalisation | 7.md:1218-1227; wallpaper paused 7.md:3725 | **Superseded → D-24** |
 | D-15 | Don't block the power button in v1 | Seen as an aggressive paid feature in competitors | 1.md:4475-4507 | **Superseded → D-20** (react to power, not block it) |
