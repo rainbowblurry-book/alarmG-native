@@ -10,7 +10,6 @@ Read before working:
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — verified structure and file map
 - [docs/DECISIONS.md](docs/DECISIONS.md) — product/technical decisions and what superseded what
 - [docs/BUILD-AND-INSTALL.md](docs/BUILD-AND-INSTALL.md) — free CI build, signing secrets, install
-- `docs/chat-history/` — archived chats: history, NOT truth. Verify against code.
 
 Rules:
 - Never introduce paid services or dependencies that cost money now or later.

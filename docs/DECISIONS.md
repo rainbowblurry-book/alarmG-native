@@ -5,7 +5,7 @@ Each entry lists the decision, the reason, its source and its status:
 - **Superseded → D-xx:** a later decision replaced it.
 - **Changed today:** the user decided it on 2026-10-31.
 
-Sources such as `3.md:906` mean `docs/chat-history/3.md`, line 906. "Code" means the decision is visible in the current source.
+Sources such as `3.md:906` refer to the old chat exports (`docs/chat-history/`), deleted on 2026-11-01. They are still in git history, e.g. `git show e430fb3:docs/chat-history/3.md`. "Code" means the decision is visible in the current source.
 
 ## Product
 
