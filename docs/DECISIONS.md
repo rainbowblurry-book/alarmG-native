@@ -32,14 +32,18 @@ Sources such as `3.md:906` mean `docs/chat-history/3.md`, line 906. "Code" means
 
 | ID | Decision | Reason | Status |
 |---|---|---|---|
-| D-20 | **Power press while ringing:** sound keeps going **and** the ringing screen comes back on | Power was a free escape (bug B1) | Changed today |
+| D-20 | **Power, Back and Home while ringing must not snooze or disarm:** the alarm sound continues and the state stays RINGING (hard requirement). Bringing the ringing screen back after power is **best effort**, bounded (no unlimited screen-off → wake loop), and must be tested on the Samsung | Power was a free escape (bug B1) | Changed today (amended)|
 | D-21 | **Disarm keeps the alarm armed** for the next repeat day; "Cancel alarm" turns it off | Repeat days must actually repeat (bug B7) | Changed today |
 | D-22 | **Remove all developer tools** (Preview, Exit Preview, Simulate Pro, unlock code) | Barebones stable build | Changed today |
 | D-23 | **Only the Minimal theme** (drop the others, the extra fonts and blur) | "Barebones working for a week"; redesign later | Changed today |
 | D-24 | **Wallpaper and custom audio scrapped** for now; the bundled tone only | Wallpaper never rendered; tone adds silent-alarm risk | Changed today |
 | D-25 | **Arming requires your own scanned item and your own PIN** (no built-in defaults) | Defaults made the mission meaningless (bug B6) | Changed today |
 | D-26 | **Never use paid services, now or later** | User rule | Changed today |
-| D-27 | **Build APKs with GitHub Actions** (free), signed with a fixed sideload keystore kept in the private repo. The current app is uninstalled once | Free; the assistant can run builds and read errors; EAS free builds are limited to 15 per month | Changed today |
+| D-27 | **Build APKs with GitHub Actions** (free tier only). **No keystore or signing password is ever committed**, even to the private repo. First choice: reuse the current APK's signing key (likely EAS-managed, see STATUS) via GitHub Actions secrets, so no uninstall is needed. Fallback: a new fixed sideload keystore, also only in secrets (one-time uninstall). Secrets are never printed in logs | Free; EAS free builds are limited to 15/month | Changed today (amended) |
+| D-28 | **CI cost control:** `workflow_dispatch` (manual) only, no push-triggered builds; standard Linux runner; concurrency cancellation; job timeout; short artifact retention. No paid services or chargeable overages (user verifies the Actions budget is $0 before the first run) | Private repos have limited free minutes and storage | Changed today |
+| D-29 | **Arming requires exact alarms, notifications and full-screen access.** If any is unavailable, arming is blocked with a clear reason. No silent fallback to an inexact alarm that still reports "armed" | An inexact alarm may fire late or be unable to start the ringing service | Changed today |
+| D-30 | **Volume:** no continuous volume forcing yet. A minimum-volume behaviour will be proposed separately (exact rule, disclosure, restore, Android limits) and needs approval | User wants to decide this explicitly | Pending approval |
+| D-31 | **Disarm** stops the current ring and keeps the schedule armed for the next selected day; **Cancel** disables the schedule. Updating the wheels to the current time must never overwrite the saved time while armed | Restates D-21 together with D-10 | Changed today |
 
 ## Technical
 
@@ -51,8 +55,9 @@ Sources such as `3.md:906` mean `docs/chat-history/3.md`, line 906. "Code" means
 | T-04 | Alarm v1: expo-notifications scheduled notification (Option A) over AlarmManager + foreground service (Option B) | Less native code | 4.md:1462-1468 | **Superseded → T-05** |
 | T-05 | Native `AlarmManager.setAlarmClock` + full-screen-intent notification, written as Kotlin inside a config plugin | Auto-open without a tap | 8.md:96-105; commit `414c152` | **Superseded → T-07** (works on device, but sound and state live in JS) |
 | T-06 | Static `showWhenLocked` removed → runtime LockScreenBypass module, ON only while ringing/snoozed | Static flags kept the app above the lock screen all the time | 5.md:2808; 6.md:5-26; `079f4b2`, `edfde06` | **Superseded → T-07** |
-| T-07 | **Local Expo module `modules/clockguard-alarm`** owns scheduling, a foreground ring service (sound/vibration/wake lock/notification), persisted ring/snooze state, boot recovery and lock-screen flags (Activity lifecycle listener). JS only renders and calls arm/cancel/snooze/disarm | Fixes B1–B5 at the root; real Kotlin files instead of regex patching | Today | Changed today |
-| T-08 | Remove the expo-notifications fallback path | Only the native path ever ran on device; two schedulers caused races | 8.md review #7; today | Changed today |
+| T-07 | **Local Expo module `modules/clockguard-alarm`** owns scheduling, a foreground ring service (sound/vibration/wake lock/notification), persisted ring/snooze state, boot recovery and lock-screen flags (Activity lifecycle listener). JS only renders and calls arm/cancel/snooze/disarm. **Migration order:** build the module, verify autolinking and native compilation, wire JS, and only then remove the superseded plugins and dependencies. Work stays on `claude/optimistic-ride-10wu6r`; no merge to `main` | Fixes B1–B5 at the root; real Kotlin files instead of regex patching; the working engine stays until the new one compiles | Today | Approved direction, amended; not implemented |
+| T-08 | Remove the expo-notifications fallback path (after T-07 compiles) | Only the native path ever ran on device; two schedulers caused races | 8.md review #7; today | Approved, not implemented |
+| T-12 | Service survival is **not guaranteed**: Android force-stop clears all alarms and stops services; START_STICKY doesn't cover every kill; OEM battery managers (Samsung) can interfere | Honest limits | Today | Active |
 | T-09 | `expo-audio` replaced `expo-av` | expo-av deprecated | 1.md:5251; 3.md:1366 | Superseded → T-07 (native MediaPlayer plays the tone) |
 | T-10 | EAS `preview` profile builds the sideload APK; `production` is AAB | Sideloading on the phone | 3.md:13117-13160; eas.json | Kept for reference; day-to-day builds → D-27 |
 | T-11 | EAS Update (OTA) suggested to save builds | Free-tier build limit | 7.md:1135; 8.md:2820 | Never configured (no `expo-updates`); not needed with D-27 |
@@ -60,6 +65,7 @@ Sources such as `3.md:906` mean `docs/chat-history/3.md`, line 906. "Code" means
 ## Working agreements (from the chats)
 - Give **full files** instead of fragments when more than ~2 places change (3.md:9035; 4.md:1498).
 - Be decisive. Don't loop on confirmations. Push back when you disagree (1.md:11042; 3.md:10834; 5.md:2591).
-- **Never claim a device test passed** unless the user reported it (1.md:11264).
+- **Never claim a device test passed** unless the user reported it (1.md:11264). Code findings may be marked "verified in code"; runtime behaviour stays UNTESTED until the user reports a phone test.
+- Don't promise CI runs or log reading until the tools are confirmed to work.
 - Explain before any `git reset` / `restore` / `stash` (1.md:11320).
 - Native changes (plugins, `app.json` permissions, native packages, `modules/`) need a new APK. JS-only changes still need a new APK too, because there is no OTA.

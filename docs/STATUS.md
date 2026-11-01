@@ -1,6 +1,6 @@
 # ClockGuard: Status
 
-_Last updated: 2026-10-31. Code baseline: `bb4bff1` (= `c0aa39d` + docs)._
+_Last updated: 2026-11-01. Code baseline: `bb4bff1` (= `c0aa39d` + docs)._
 
 Legend:
 - **[device]**: the user reported it from their phone (Samsung, Android 16).
@@ -42,11 +42,19 @@ Legend:
 - App-icon crop fix (`41c12a2`, `c6c9e2d`) [history; no confirmation found].
 
 ## Decided today (2026-10-31), not yet implemented
-- Keep ringing on power press **and** bring the ringing screen back.
-- Disarm keeps the alarm armed for the next repeat day.
+See DECISIONS D-20…D-31 and T-07, T-08, T-12. In short:
+- Power, Back and Home must not silence, snooze or disarm (hard requirement). Screen re-open after power is best effort.
+- Disarm keeps the schedule armed for the next selected day; Cancel turns it off.
 - Remove all dev tools; keep only the Minimal theme; scrap wallpaper and custom audio.
-- Arming requires your own scanned item and your own PIN (no defaults).
-- Build APKs for free with GitHub Actions (one-time uninstall of the current app because the signing key changes).
+- Arming requires your own item, your own PIN, and the exact-alarm, notification and full-screen permissions.
+- Free GitHub Actions builds, manual trigger only; no keystore or password in the repo (secrets only).
+- Volume behaviour: proposal pending your approval.
+
+## Open blockers (environment)
+- **Pushing to GitHub fails (HTTP 403):** "Claude doesn't have GitHub access to rainbowblurry-book/alarmG-native". Reading via the GitHub tools works. Fix: install or reconnect the Claude GitHub App for this repo. Until then, commits are local only.
+- **`docs.expo.dev` and `dl.google.com` are blocked** in this cloud environment, so the v57 docs and local Kotlin compilation are unavailable here. The npm registry works.
+- **GitHub Actions tools:** listing workflows works (read). Starting runs and reading job logs are unconfirmed until write access works.
+- **Signing:** the APK on the phone was most likely signed with an EAS-managed key [history 4.md:11, "keystore made once"]. It can be downloaded once with `eas credentials` (free, uses no build) and stored as GitHub secrets. Not yet verified.
 
 ## Where the history conflicts with the code
 | History says | Code / git says |
@@ -63,23 +71,23 @@ Legend:
 Referenced in the chats but **not in the repo**, so I could not read them: `ClockGuard-Handoff-*.md`, `WakeUp-Native-Project-Handoff1.md`, `alarmG-native-devgate-status5-4.md`, `2-ARCHITECTURE.md`, `CODE-BUNDLE.md` (git-ignored), `alarm-redesign.txt`, `design/a8.png`.
 
 ## Prioritized next steps
-1. **Native alarm engine** (fixes B1–B5). Local Expo module `modules/clockguard-alarm`:
+1. **Native alarm engine** (targets B1–B4; B5 volume is pending a decision). Local Expo module `modules/clockguard-alarm`:
    - foreground ring service owning sound, vibration, wake lock and the full-screen notification;
    - persisted ring/snooze state and native snooze via AlarmManager;
    - boot recovery and lock-screen flags via an Activity lifecycle listener;
    - this replaces the 3 config plugins.
 2. **Barebones cleanup:** dev tools, extra themes/fonts/blur, wallpaper/audio, expo-notifications fallback, defaults (B6, B8, B10).
 3. **JS rewire:** ringing UI reads native state, Back blocked while ringing, disarm stays armed (B7).
-4. **Free CI APK build** (GitHub Actions) and the device test checklist below.
+4. **Free CI APK build** (GitHub Actions, manual trigger, secrets-based signing) and the device test checklist below.
 5. Later: UI/UX redesign (issue #2 dial idea vs issue #4 Skia wheel), multiple alarms, Play Store prep.
 
 ## Device test checklist (for the next APK)
 1. Arm +2 min, screen off: rings and opens by itself.
-2. While ringing, press power: sound continues, screen comes back.
+2. While ringing, press power: sound continues and the state stays ringing (screen re-open is best effort).
 3. Back gesture / Home while ringing: sound continues; the notification brings it back.
 4. Swipe the app from recents while ringing: still rings.
 5. PIN snooze, then swipe the app away: rings again when the snooze ends.
-6. Volume-down while ringing: stays loud.
+6. Volume-down while ringing: behaviour depends on the volume decision (D-30).
 7. Scan the correct item: silence; still armed for the next repeat day.
 8. Reboot while armed: still fires.
 9. Cannot arm without your item and PIN.

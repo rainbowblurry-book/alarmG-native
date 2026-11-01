@@ -13,7 +13,10 @@ Read before working:
 
 Rules:
 - Never introduce paid services or dependencies that cost money now or later.
+- Never commit keystores, signing passwords or other secrets; use GitHub Actions secrets and never print them.
+- CI builds are manual (`workflow_dispatch`) only.
 - Never change the Android package `com.rainbowblurry.wakeupnative` or the Expo slug `alarmG-native`.
+- Don't remove a working alarm path before its replacement compiles.
 - Alarm reliability beats features. Any change that could stop the alarm from ringing, or
   open a way to silence it without the mission, needs explicit care and a device test item.
 - Never mark something "device-tested" unless the user reported it from the phone.

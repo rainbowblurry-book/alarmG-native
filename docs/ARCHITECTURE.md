@@ -71,4 +71,4 @@ docs/chat-history/1.md–8.md     Archived Perplexity chats (history, not truth)
 - **Two schedulers exist** (native and the expo-notifications fallback), and three notification paths with their own listeners in `App.tsx`.
 
 ## 5. Target architecture (planned, not yet implemented)
-See [STATUS.md → Next steps](STATUS.md#prioritized-next-steps). In short: a local Expo module `modules/clockguard-alarm` owns scheduling, a **foreground ring service** (sound, vibration, wake lock, persistent full-screen notification), the persisted ring/snooze state, boot recovery and the lock-screen flags. JS only renders state and calls `arm / cancel / snooze / disarm`.
+See [STATUS.md → Next steps](STATUS.md#prioritized-next-steps). In short: a local Expo module `modules/clockguard-alarm` owns scheduling, a **foreground ring service** (sound, vibration, wake lock, persistent full-screen notification), the persisted ring/snooze state, boot recovery and the lock-screen flags. JS only renders state and calls `arm / cancel / snooze / disarm`. The current engine stays in place until the new module compiles in CI (DECISIONS T-07).
