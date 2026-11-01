@@ -11,9 +11,30 @@ import { Platform } from 'react-native';
 
 export type RingState = 'idle' | 'ringing' | 'snoozed';
 
+/** One alarm of the list (max 5). */
+export type AlarmItem = {
+  id: string;
+  hour: number;
+  minute: number;
+  days: number[];
+  enabled: boolean;
+  /** epoch ms of this alarm's next ring; 0 when off */
+  nextTriggerAt: number;
+};
+
+export const MAX_ALARMS = 5;
+
 export type AlarmState = {
   state: RingState;
+  /** true when at least one alarm is on */
   armed: boolean;
+  alarms: AlarmItem[];
+  /** id of the alarm lined up next ('' when none) */
+  nextAlarmId: string;
+  /** id of the alarm that is ringing/snoozed ('' when idle or a test) */
+  ringingAlarmId: string;
+  /** session start of the last real ring that hit the 90-minute limit (streaks) */
+  lastMissedSession: number;
   hour: number;
   minute: number;
   days: number[];
@@ -50,6 +71,9 @@ declare class ClockGuardEngineNative extends NativeModule<Events> {
   getPermissions(): AlarmPermissions;
   arm(hour: number, minute: number, days: number[]): number;
   cancel(): void;
+  saveAlarm(id: string, hour: number, minute: number, days: number[]): void;
+  setAlarmEnabled(id: string, enabled: boolean): number;
+  deleteAlarm(id: string): boolean;
   snooze(seconds: number): boolean;
   disarm(): boolean;
   setVolumeBoostEnabled(enabled: boolean): void;
@@ -71,6 +95,10 @@ export function isEngineAvailable(): boolean {
 const IDLE: AlarmState = {
   state: 'idle',
   armed: false,
+  alarms: [],
+  nextAlarmId: '',
+  ringingAlarmId: '',
+  lastMissedSession: 0,
   hour: 7,
   minute: 0,
   days: [],
@@ -102,6 +130,10 @@ export function describeEngineError(e: unknown): string {
       return 'An alarm is already ringing or snoozed.';
     case 'ERR_SNOOZE_FAILED':
       return 'Snooze could not be scheduled, so the alarm keeps ringing.';
+    case 'ERR_LOCKED':
+      return 'Turn this alarm off first.';
+    case 'ERR_LIMIT':
+      return `You can have up to ${MAX_ALARMS} alarms.`;
     case 'ERR_SCHEDULE_FAILED':
       return 'Android refused to schedule the alarm. Check the phone settings in the Settings tab.';
     default:
@@ -127,6 +159,24 @@ export function arm(hour: number, minute: number, days: number[]): number {
 
 export function cancel(): void {
   Native?.cancel();
+}
+
+/** Create or change an alarm (stays off). Throws ERR_LOCKED while it is on, ERR_LIMIT past 5. */
+export function saveAlarm(id: string, hour: number, minute: number, days: number[]): void {
+  if (!Native) throw Object.assign(new Error('Alarm engine missing'), { code: 'ERR_NO_ENGINE' });
+  Native.saveAlarm(id, hour, minute, days);
+}
+
+/** Turn one alarm on (same gates as arm) or off. Throws with a .code when it can't be turned on. */
+export function setAlarmEnabled(id: string, enabled: boolean): number {
+  if (!Native) throw Object.assign(new Error('Alarm engine missing'), { code: 'ERR_NO_ENGINE' });
+  return Native.setAlarmEnabled(id, enabled);
+}
+
+/** Delete an alarm that is off. */
+export function deleteAlarm(id: string): boolean {
+  if (!Native) throw Object.assign(new Error('Alarm engine missing'), { code: 'ERR_NO_ENGINE' });
+  return Native.deleteAlarm(id);
 }
 
 export function snooze(seconds: number): boolean {

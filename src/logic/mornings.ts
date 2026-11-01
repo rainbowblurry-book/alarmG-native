@@ -80,6 +80,10 @@ export function useMorningsRecorder(a: AlarmState) {
         if (session) AsyncStorage.setItem(LAST_RING_KEY, JSON.stringify({ session, snoozes: a.snoozeCount })).catch(() => {});
         return;
       }
+      // The engine marks a real ring that hit the 90-minute limit (works even if the app never opened).
+      if (a.lastMissedSession && !cache.some((m) => m.session === a.lastMissedSession)) {
+        upsert({ session: a.lastMissedSession, day: dayKey(a.lastMissedSession), upAt: 0, snoozes: 0, result: 'missed' });
+      }
       const raw = await AsyncStorage.getItem(LAST_RING_KEY).catch(() => null);
       if (!raw || cancelled) return;
       await AsyncStorage.removeItem(LAST_RING_KEY).catch(() => {});
@@ -91,7 +95,7 @@ export function useMorningsRecorder(a: AlarmState) {
     return () => {
       cancelled = true;
     };
-  }, [a.state, a.sessionStartedAt, a.isTestRing, a.snoozeCount]);
+  }, [a.state, a.sessionStartedAt, a.isTestRing, a.snoozeCount, a.lastMissedSession]);
 }
 
 export type MorningStats = {

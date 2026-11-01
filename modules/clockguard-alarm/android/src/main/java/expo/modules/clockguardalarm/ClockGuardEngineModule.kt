@@ -53,35 +53,61 @@ class ClockGuardEngineModule : Module() {
     }
 
     /**
-     * Arm (or re-arm) the schedule. Fails with a coded error instead of reporting
-     * success when notifications, exact alarms or full-screen access are missing.
-     * Returns the next trigger time in ms.
+     * Legacy single-alarm API (kept so nothing breaks): saves the time/days into the
+     * first alarm and turns it on. Same gates as setAlarmEnabled().
      */
     Function("arm") { hour: Int, minute: Int, days: List<Int> ->
       val ctx = context
-      if (hour !in 0..23 || minute !in 0..59) throw CodedException("ERR_INVALID_TIME", "Invalid time", null)
-      val cleanDays = days.filter { it in 0..6 }.distinct()
-      if (cleanDays.isEmpty()) throw CodedException("ERR_NO_DAYS", "Pick at least one day", null)
-      requireAlarmAccess(ctx)
-      AlarmStore.saveSchedule(ctx, hour, minute, cleanDays)
-      val at = try {
-        AlarmScheduler.scheduleNextRing(ctx)
-      } catch (e: Exception) {
-        AlarmStore.setArmed(ctx, false)
-        AlarmScheduler.cancelNextRing(ctx)
-        AlarmStateBus.notifyChanged(ctx)
-        throw CodedException("ERR_SCHEDULE_FAILED", "Android refused to schedule the exact alarm", e)
-      }
-      AlarmStateBus.notifyChanged(ctx)
-      at?.toDouble() ?: throw CodedException("ERR_SCHEDULE_FAILED", "No next alarm time found", null)
+      val id = AlarmStore.alarms(ctx).firstOrNull()?.id ?: "a1"
+      upsertAlarm(ctx, id, hour, minute, days, allowWhileOn = true)
+      enableAlarm(ctx, id)
     }
 
-    /** Turns the schedule off. Never stops a ring/snooze in progress (that needs the mission). */
+    /** Legacy: turns ALL alarms off. Never stops a ring/snooze in progress (that needs the mission). */
     Function("cancel") {
       val ctx = context
-      AlarmStore.setArmed(ctx, false)
+      AlarmStore.saveAlarms(ctx, AlarmStore.alarms(ctx).map { it.copy(enabled = false) })
       AlarmScheduler.cancelNextRing(ctx)
       AlarmStateBus.notifyChanged(ctx)
+    }
+
+    /**
+     * Create or change an alarm (max 5). An alarm that is ON is locked: turn it off
+     * first (D-09). A new alarm starts OFF.
+     */
+    Function("saveAlarm") { id: String, hour: Int, minute: Int, days: List<Int> ->
+      val ctx = context
+      upsertAlarm(ctx, id, hour, minute, days, allowWhileOn = false)
+      AlarmStateBus.notifyChanged(ctx)
+    }
+
+    /**
+     * Turn one alarm on or off. Turning on checks notifications, exact alarms and
+     * full-screen access (D-29) and needs at least one day; it never reports a fake
+     * success. Turning off never stops a ring/snooze in progress. Returns the time of
+     * the next ring of any alarm (0 when none).
+     */
+    Function("setAlarmEnabled") { id: String, enabled: Boolean ->
+      val ctx = context
+      if (enabled) {
+        enableAlarm(ctx, id)
+      } else {
+        AlarmStore.saveAlarms(ctx, AlarmStore.alarms(ctx).map { if (it.id == id) it.copy(enabled = false) else it })
+        runCatching { AlarmScheduler.scheduleNextRing(ctx) }
+        AlarmStateBus.notifyChanged(ctx)
+        AlarmStore.nextTriggerAt(ctx).toDouble()
+      }
+    }
+
+    /** Delete an alarm that is OFF. */
+    Function("deleteAlarm") { id: String ->
+      val ctx = context
+      val list = AlarmStore.alarms(ctx)
+      val target = list.firstOrNull { it.id == id } ?: return@Function false
+      if (target.enabled) throw CodedException("ERR_LOCKED", "Turn the alarm off first", null)
+      AlarmStore.saveAlarms(ctx, list.filter { it.id != id })
+      AlarmStateBus.notifyChanged(ctx)
+      true
     }
 
     /** Only while ringing; JS checks the PIN first. Stays ringing if the snooze can't be scheduled. */
@@ -155,6 +181,40 @@ class ClockGuardEngineModule : Module() {
     Function("openSettings") { which: String ->
       openSettingsPage(context, which)
     }
+  }
+
+  private fun upsertAlarm(ctx: Context, id: String, hour: Int, minute: Int, days: List<Int>, allowWhileOn: Boolean) {
+    if (id.isBlank() || id.length > 40) throw CodedException("ERR_INVALID_ID", "Invalid alarm id", null)
+    if (hour !in 0..23 || minute !in 0..59) throw CodedException("ERR_INVALID_TIME", "Invalid time", null)
+    val cleanDays = days.filter { it in 0..6 }.distinct().sorted()
+    val list = AlarmStore.alarms(ctx)
+    val existing = list.firstOrNull { it.id == id }
+    if (existing == null) {
+      if (list.size >= AlarmStore.MAX_ALARMS) throw CodedException("ERR_LIMIT", "You can have up to ${AlarmStore.MAX_ALARMS} alarms", null)
+      AlarmStore.saveAlarms(ctx, list + AlarmItem(id, hour, minute, cleanDays, false))
+    } else {
+      if (existing.enabled && !allowWhileOn) throw CodedException("ERR_LOCKED", "Turn the alarm off first", null)
+      AlarmStore.saveAlarms(ctx, list.map { if (it.id == id) it.copy(hour = hour, minute = minute, days = cleanDays) else it })
+    }
+  }
+
+  /** Turns one alarm on through the same gates as before; on any failure it stays off. */
+  private fun enableAlarm(ctx: Context, id: String): Double {
+    val list = AlarmStore.alarms(ctx)
+    val target = list.firstOrNull { it.id == id } ?: throw CodedException("ERR_INVALID_ID", "Unknown alarm", null)
+    if (target.days.isEmpty()) throw CodedException("ERR_NO_DAYS", "Pick at least one day", null)
+    requireAlarmAccess(ctx)
+    AlarmStore.saveAlarms(ctx, list.map { if (it.id == id) it.copy(enabled = true) else it })
+    try {
+      AlarmScheduler.scheduleNextRing(ctx) ?: throw IllegalStateException("No next alarm time found")
+    } catch (e: Exception) {
+      AlarmStore.saveAlarms(ctx, AlarmStore.alarms(ctx).map { if (it.id == id) it.copy(enabled = false) else it })
+      runCatching { AlarmScheduler.scheduleNextRing(ctx) }
+      AlarmStateBus.notifyChanged(ctx)
+      throw CodedException("ERR_SCHEDULE_FAILED", "Android refused to schedule the exact alarm", e)
+    }
+    AlarmStateBus.notifyChanged(ctx)
+    return AlarmStore.nextTriggerAt(ctx).toDouble()
   }
 
   private fun permissions(ctx: Context): Map<String, Boolean> {

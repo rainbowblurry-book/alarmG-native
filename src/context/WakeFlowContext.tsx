@@ -30,6 +30,10 @@ type WakeFlowContextType = {
   /** Returns null on success, or a plain-language reason why the alarm was NOT armed. */
   arm: (hour: number, minute: number, days: number[]) => string | null;
   cancelAlarm: () => void;
+  /** Multiple alarms. Each returns null on success, or a plain-language reason. */
+  saveAlarm: (id: string, hour: number, minute: number, days: number[]) => string | null;
+  setAlarmEnabled: (id: string, enabled: boolean) => string | null;
+  deleteAlarm: (id: string) => string | null;
   /** Returns null on success, or why the snooze failed (the alarm keeps ringing). */
   snooze: (seconds: number) => string | null;
   disarm: () => void;
@@ -90,6 +94,23 @@ export function WakeFlowProvider({ children }: { children: ReactNode }) {
     refresh();
   }, [refresh]);
 
+  const wrap = useCallback(
+    (fn: () => unknown) => {
+      try {
+        fn();
+        return null;
+      } catch (e) {
+        return Alarm.describeEngineError(e);
+      } finally {
+        refresh();
+      }
+    },
+    [refresh]
+  );
+  const saveAlarm = useCallback((id: string, hour: number, minute: number, days: number[]) => wrap(() => Alarm.saveAlarm(id, hour, minute, days)), [wrap]);
+  const setAlarmEnabled = useCallback((id: string, enabled: boolean) => wrap(() => Alarm.setAlarmEnabled(id, enabled)), [wrap]);
+  const deleteAlarm = useCallback((id: string) => wrap(() => Alarm.deleteAlarm(id)), [wrap]);
+
   const snooze = useCallback((seconds: number) => {
     try {
       Alarm.snooze(seconds);
@@ -141,6 +162,9 @@ export function WakeFlowProvider({ children }: { children: ReactNode }) {
         incrementMovement,
         arm,
         cancelAlarm,
+        saveAlarm,
+        setAlarmEnabled,
+        deleteAlarm,
         snooze,
         disarm,
         refresh,

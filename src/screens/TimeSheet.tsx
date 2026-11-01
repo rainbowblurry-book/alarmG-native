@@ -1,35 +1,45 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { useSettings } from '../context/SettingsContext';
-import { useWakeFlow } from '../context/WakeFlowContext';
 import { useDesign } from '../context/DesignContext';
 import { parseTyped, SignaturePicker, TypeTime } from '../components/TimePickers';
 import { bevel, Btn, Sheet, space, Txt } from '../components/ui';
 import { DAY_NAMES, DAY_SHORT } from '../logic/useReadiness';
 
-/** Bottom sheet: the design's own time picker + repeat days. Never opened while armed (D-09). */
-export default function TimeSheet({ visible, onClose, startTyping = false }: { visible: boolean; onClose: () => void; startTyping?: boolean }) {
+/**
+ * Bottom sheet for the alarm shown on Home: the design's own time picker + repeat days.
+ * Never opened while that alarm is on (D-09). Everything is saved when it closes.
+ */
+export default function TimeSheet({
+  visible,
+  onClose,
+  startTyping = false,
+  hour,
+  minute,
+  days,
+  onSave,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  startTyping?: boolean;
+  hour: number;
+  minute: number;
+  days: number[];
+  onSave: (h: number, m: number, days: number[]) => void;
+}) {
   const { pack } = useDesign();
   const c = pack.colors;
-  const { settings, updateSettings } = useSettings();
-  const { alarm } = useWakeFlow();
-  const locked = alarm.armed;
   const retro = pack.chrome === 'bevel';
 
-  const toggleDay = (i: number) => {
-    if (locked) return;
-    const has = settings.repeatDays.includes(i);
-    updateSettings({ repeatDays: has ? settings.repeatDays.filter((d) => d !== i) : [...settings.repeatDays, i].sort() });
-  };
-
-  // Draft while the sheet is open; saved when it closes (fewer storage writes while dragging).
-  const [draft, setDraft] = useState({ h: settings.alarmHour, m: settings.alarmMinute });
+  const [draft, setDraft] = useState({ h: hour, m: minute });
+  const [dayDraft, setDayDraft] = useState<number[]>(days);
+  const toggleDay = (i: number) => setDayDraft((d) => (d.includes(i) ? d.filter((x) => x !== i) : [...d, i].sort()));
   // Typing mode: tap the time in any picker to type it.
   const [typing, setTyping] = useState(false);
   const [digits, setDigits] = useState('');
   useEffect(() => {
     if (visible) {
-      setDraft({ h: settings.alarmHour, m: settings.alarmMinute });
+      setDraft({ h: hour, m: minute });
+      setDayDraft(days);
       setTyping(startTyping);
       setDigits('');
     }
@@ -42,9 +52,8 @@ export default function TimeSheet({ visible, onClose, startTyping = false }: { v
   };
   const close = () => {
     const final = (typing && parseTyped(digits)) || draft;
-    if (!locked && (final.h !== settings.alarmHour || final.m !== settings.alarmMinute)) {
-      updateSettings({ alarmHour: final.h, alarmMinute: final.m });
-    }
+    const daysChanged = dayDraft.join(',') !== days.join(',');
+    if (final.h !== hour || final.m !== minute || daysChanged) onSave(final.h, final.m, dayDraft);
     onClose();
   };
 
@@ -66,7 +75,7 @@ export default function TimeSheet({ visible, onClose, startTyping = false }: { v
       )}
       <View style={{ flexDirection: 'row', gap: 6 }}>
         {DAY_SHORT.map((d, i) => {
-          const on = settings.repeatDays.includes(i);
+          const on = dayDraft.includes(i);
           return (
             <Pressable
               key={i}
@@ -91,7 +100,7 @@ export default function TimeSheet({ visible, onClose, startTyping = false }: { v
           );
         })}
       </View>
-      {settings.repeatDays.length === 0 && (
+      {dayDraft.length === 0 && (
         <Txt variant="caption" color={c.warn} style={{ textAlign: 'center' }}>
           Pick at least one day
         </Txt>

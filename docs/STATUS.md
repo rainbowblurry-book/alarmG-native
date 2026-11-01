@@ -56,7 +56,15 @@ Plan: [FEATURES-PLAN.md](FEATURES-PLAN.md). Everything unlocked for now; premium
   streak flame on Home (after the first finished morning) and a Mornings page (Settings → You → Mornings).
   - Device test: finish a real alarm → flame shows 1; let a real alarm hit the 90-minute limit → streak 0
     (open the app afterwards); test alarms never change it.
-- Phase 2, Multiple alarms: not started (engine change, after Phase 1 passes).
+- **Phase 2, Multiple alarms (engine change)** [code; CI compiles it; web preview checked: switch, edit-when-off, locked-when-on, add]:
+  up to 5 alarms, one mission; a chip row under the hero (tap = show, long-press an off alarm = delete,
+  + = add); hold-to-arm / turn-off acts on the shown alarm. Engine rings only the soonest alarm and then
+  lines up the next. **Test only after build 10 (Phase 1) passed.**
+  - Device tests: (1) update over build 9/10 with an armed alarm → it is still armed at the same time
+    (migration); (2) add a 2nd alarm 2 min after the 1st, arm both → both ring at their own time, each needs
+    the mission; (3) two alarms at the same minute → one ring; (4) turn one off → the other still rings;
+    (5) reboot with 2 armed → both still ring; (6) an alarm that is on can't be edited or deleted;
+    (7) mission chips locked while any alarm is on; (8) 90-min limit and test alarm unchanged.
 - Phase 3, Wake-up check: not started (engine change, after Phase 2 passes).
 
 ## Known limitations (honest)

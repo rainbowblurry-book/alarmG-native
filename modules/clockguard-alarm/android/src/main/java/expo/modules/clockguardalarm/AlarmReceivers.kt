@@ -16,6 +16,7 @@ class AlarmReceiver : BroadcastReceiver() {
       when (action) {
         AlarmScheduler.ACTION_RING -> {
           if (!AlarmStore.isArmed(context)) return
+          val firedId = AlarmStore.nextAlarmId(context)
           if (AlarmStore.state(context) == AlarmStore.STATE_IDLE) {
             AlarmStore.startNewRing(context, isTest = false)
           } else {
@@ -23,6 +24,7 @@ class AlarmReceiver : BroadcastReceiver() {
             AlarmScheduler.cancelSnoozeEnd(context)
             AlarmStore.resumeRing(context, clearTestFlag = true)
           }
+          AlarmStore.setRingingAlarmId(context, firedId)
           AlarmRingService.start(context)
         }
         AlarmScheduler.ACTION_SNOOZE_END -> {

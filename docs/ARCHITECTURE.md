@@ -59,7 +59,8 @@ src/logic/features.ts            free/premium registry (all unlocked for now)
 src/screens/MorningsScreen.tsx   streak + last 4 weeks + averages
 src/navigation/AppNavigator.tsx  native stack: Intro, Welcome, Home, Item, Pin, Movement, Settings, Readiness, Design
 src/screens/IntroScreen.tsx      first-launch walkthrough (4 cards, skippable; replay from Settings)
-src/screens/HomeScreen.tsx       next-alarm card (per-design layout), Mission chips, hold-to-arm
+src/screens/HomeScreen.tsx       hero for the shown alarm (per-design layout), alarm chips row, Mission chips, hold-to-arm
+src/components/AlarmStrip.tsx    alarm chips: tap = show, long-press = delete (off only), + = add (max 5)
 src/screens/TimeSheet.tsx        bottom sheet: the design's picker + repeat days (saved when it closes)
 src/screens/MissionScreens.tsx   Item (scan / fallback), PIN (+ cruelty mode), Movement
 src/screens/SettingsScreens.tsx  Settings list, Phone readiness, first-launch checklist, Design switcher
@@ -73,9 +74,11 @@ docs/                            STATUS, DECISIONS, BUILD-AND-INSTALL, this file
 
 | Who | What |
 |---|---|
-| `arm(h, m, days)` | Checks notifications, exact alarms and full-screen access, otherwise throws a coded error and arms nothing. Saves the schedule and calls `setAlarmClock` for the next matching day. |
+| Alarm list (D-48) | `AlarmStore.alarms()`: up to 5 `{id, hour, minute, days, enabled}` (JSON in prefs). Migrated once from the old single-alarm keys. `scheduleNextRing` registers only the soonest enabled alarm (`nextAlarmId`); the ring records `ringingAlarmId`. JS: `saveAlarm`, `setAlarmEnabled`, `deleteAlarm` |
+| `arm(h, m, days)` | Legacy: saves into the first alarm and turns it on. |
+| Turning an alarm on | Checks notifications, exact alarms and full-screen access, otherwise throws a coded error and turns nothing on. Then `setAlarmClock` for the soonest alarm that is on. |
 | Ring time limit | When ringing starts, the service schedules an exact `RING_TIMEOUT` alarm for session start + 90 min (at least 5 min from now). Snooze, disarm and test exit cancel it. If it fires while still ringing, `RingSession.giveUp`: idle, volume restored, "Missed alarm" notification, still armed (D-36) |
-| `cancel()` | Schedule off. Never stops an active ring or snooze. |
+| `cancel()` | Legacy: all alarms off. Never stops an active ring or snooze. |
 | `AlarmReceiver` RING | `startNewRing`, starts `AlarmRingService`, and schedules the next repeat day in `finally`. If the service can't start, it posts a backup notification whose own sound loops (FLAG_INSISTENT). |
 | `AlarmRingService` | Foreground service (`systemExempted`, else `mediaPlayback`). Plays a looping MediaPlayer with USAGE_ALARM, vibrates, holds a partial wake lock, and posts an ongoing CATEGORY_ALARM notification with a full-screen intent. `stopWithTask=false` and START_STICKY. |
 | `snooze(sec)` | Only while ringing. Schedules the snooze-end exact alarm **first**; if that fails the alarm keeps ringing. Then stops the service, restores the volume and shows a "snoozed until" notification. |

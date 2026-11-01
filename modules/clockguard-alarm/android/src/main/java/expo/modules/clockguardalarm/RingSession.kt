@@ -26,6 +26,8 @@ object RingSession {
   /** 90-minute limit reached without the mission: stop and leave a "Missed alarm" notice. */
   fun giveUp(ctx: Context) {
     val startedAt = AlarmStore.sessionStartedAt(ctx)
+    // Remembered for streaks (a real alarm that was never completed). Test rings don't count.
+    if (!AlarmStore.isTestRing(ctx) && startedAt > 0L) AlarmStore.setLastMissedSession(ctx, startedAt)
     end(ctx)
     AlarmNotifications.showMissed(ctx, startedAt)
   }

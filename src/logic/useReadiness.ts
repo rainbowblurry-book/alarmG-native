@@ -31,9 +31,10 @@ export const PERMISSION_ROWS: { key: keyof AlarmPermissions; label: string; hint
 ];
 
 /** Same arming gates as before the redesign (D-25, D-29). */
-export function armBlockers(settings: AlarmSettings, perms: AlarmPermissions) {
+/** Same gates as before; `days` = the days of the alarm being turned on. */
+export function armBlockers(settings: AlarmSettings, perms: AlarmPermissions, days: number[] = settings.repeatDays) {
   const requiredAccessMissing = !perms.notifications || !perms.exactAlarms || !perms.fullScreen;
-  const noDays = settings.repeatDays.length === 0;
+  const noDays = days.length === 0;
   const itemOk = settings.wakeBarcode.trim().length > 0;
   const pinOk = /^\d{10}$/.test(settings.snoozePin);
   const reasons: { text: string; target: 'item' | 'pin' | 'days' | 'phone' }[] = [];

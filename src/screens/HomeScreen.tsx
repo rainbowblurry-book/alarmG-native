@@ -12,6 +12,8 @@ import Svg, { Path } from 'react-native-svg';
 import TimeSheet from './TimeSheet';
 import { DragTime, wasJustDragged } from '../components/TimePickers';
 import { useMornings } from '../logic/mornings';
+import AlarmStrip from '../components/AlarmStrip';
+import { MAX_ALARMS } from '../../modules/clockguard-alarm';
 import { armBlockers, DAY_SHORT, describeDays, formatIn, pad2, usePermissions } from '../logic/useReadiness';
 import type { RootStack } from '../navigation/types';
 
@@ -31,7 +33,7 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<RootSt
   const { pack } = useDesign();
   const c = pack.colors;
   const { settings, updateSettings } = useSettings();
-  const { alarm, arm, cancelAlarm } = useWakeFlow();
+  const { alarm, saveAlarm, setAlarmEnabled, deleteAlarm } = useWakeFlow();
   const [perms, refreshPerms] = usePermissions();
   const { stats } = useMornings();
   const [now, setNow] = useState(() => new Date());
@@ -39,28 +41,86 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<RootSt
   const previewSheet = (globalThis as { __cgPreviewSheet?: boolean }).__cgPreviewSheet === true;
   // TESTING-ONLY END
   const [sheetOpen, setSheetOpen] = useState(previewSheet);
-  const armed = alarm.armed;
+
+  // Multiple alarms: the hero shows one alarm (tap a chip to switch). Mission setup
+  // stays locked while ANY alarm is on (D-09).
+  const [selectedId, setSelectedId] = useState('');
+  const list = alarm.alarms;
+  const selected =
+    list.find((a) => a.id === selectedId) ?? list.find((a) => a.id === alarm.nextAlarmId) ?? list.find((a) => a.enabled) ?? list[0];
+  // Before the first alarm exists (fresh install), show the saved draft.
+  const sel = selected ?? { id: '', hour: settings.alarmHour, minute: settings.alarmMinute, days: settings.repeatDays, enabled: false, nextTriggerAt: 0 };
+  const armed = sel.enabled; // this alarm is on → its time/days are locked
+  const anyArmed = alarm.armed;
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 15000);
     return () => clearInterval(t);
   }, []);
 
-  const gate = armBlockers(settings, perms);
+  const gate = armBlockers(settings, perms, sel.days);
   const armDisabled = !armed && gate.blocked;
   // Armed, but Android has no alarm scheduled (e.g. permission revoked): say so loudly.
-  const armedButInactive = armed && alarm.state === 'idle' && !alarm.nextTriggerAt;
+  const armedButInactive = anyArmed && alarm.state === 'idle' && !alarm.nextTriggerAt;
   const phoneIssues = (['notifications', 'exactAlarms', 'fullScreen'] as const).filter((k) => !perms[k]).length;
 
-  const nextAt = armed ? alarm.nextTriggerAt : nextOccurrence(settings.alarmHour, settings.alarmMinute, settings.repeatDays, now);
-  const timeText = `${pad2(settings.alarmHour)}:${pad2(settings.alarmMinute)}`;
-  const daysText = describeDays(settings.repeatDays);
+  const nextAt = armed ? sel.nextTriggerAt : nextOccurrence(sel.hour, sel.minute, sel.days, now);
+  const timeText = `${pad2(sel.hour)}:${pad2(sel.minute)}`;
+  const daysText = describeDays(sel.days);
   const inText = nextAt ? formatIn(nextAt - now.getTime()) : '';
 
+  /** Saves a change to the shown alarm (only while it is off). */
+  const saveSel = (h: number, m: number, days: number[]) => {
+    if (armed) return;
+    if (!sel.id) {
+      updateSettings({ alarmHour: h, alarmMinute: m, repeatDays: days });
+      return;
+    }
+    const error = saveAlarm(sel.id, h, m, days);
+    if (error) Alert.alert('Not saved', error);
+  };
+
   const doArm = () => {
-    const error = arm(settings.alarmHour, settings.alarmMinute, settings.repeatDays);
+    let id = sel.id;
+    if (!id) {
+      // Very first alarm: create it from the draft, then turn it on.
+      id = 'a1';
+      const e = saveAlarm(id, sel.hour, sel.minute, sel.days);
+      if (e) return Alert.alert('Alarm NOT armed', e);
+    }
+    const error = setAlarmEnabled(id, true);
     refreshPerms();
     if (error) Alert.alert('Alarm NOT armed', error);
+  };
+
+  const doCancel = () => {
+    const error = setAlarmEnabled(sel.id, false);
+    if (error) Alert.alert('Not changed', error);
+  };
+
+  const addAlarm = () => {
+    const id = `a${Date.now().toString(36)}`;
+    const t = new Date();
+    const error = saveAlarm(id, t.getHours(), t.getMinutes(), sel.days.length ? sel.days : [1, 2, 3, 4, 5]);
+    if (error) return Alert.alert('Not added', error);
+    setSelectedId(id);
+  };
+
+  const askDelete = (a: { id: string; hour: number; minute: number; enabled: boolean }) => {
+    if (a.enabled) return Alert.alert('Turn it off first', 'An alarm that is on can’t be deleted.');
+    if (list.length <= 1) return;
+    Alert.alert(`Delete ${pad2(a.hour)}:${pad2(a.minute)}?`, undefined, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          const e = deleteAlarm(a.id);
+          if (e) Alert.alert('Not deleted', e);
+          else if (a.id === selectedId) setSelectedId('');
+        },
+      },
+    ]);
   };
 
   const goReason = (target: 'item' | 'pin' | 'days' | 'phone') => {
@@ -128,7 +188,20 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<RootSt
       </View>
 
       <View style={{ flex: 1, justifyContent: 'center', minHeight: 260 }}>
-        <Hero pack={pack} hour={settings.alarmHour} minute={settings.alarmMinute} onTimeChange={(h, m) => updateSettings({ alarmHour: h, alarmMinute: m })} time={timeText} days={daysText} inText={inText} armed={armed} repeatDays={settings.repeatDays} onPress={openTime} onTapNumbers={openTyping} />
+        <Hero pack={pack} hour={sel.hour} minute={sel.minute} onTimeChange={(h, m) => saveSel(h, m, sel.days)} time={timeText} days={daysText} inText={inText} armed={armed} repeatDays={sel.days} onPress={openTime} onTapNumbers={openTyping} />
+        {/* Alarms: shown once one exists */}
+        {list.length > 0 && (
+          <View style={{ marginTop: space.md }}>
+            <AlarmStrip
+              alarms={list}
+              selectedId={sel.id}
+              onSelect={setSelectedId}
+              onAdd={addAlarm}
+              onDelete={askDelete}
+              canAdd={list.length < MAX_ALARMS}
+            />
+          </View>
+        )}
       </View>
 
 
@@ -153,22 +226,22 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<RootSt
             icon={retro ? 'walk-sharp' : 'walk-outline'}
             label={settings.movementEnabled ? `Move ${settings.movementTarget}` : 'Move off'}
             ok
-            disabled={armed}
+            disabled={anyArmed}
             onPress={() => navigation.navigate('Movement')}
             tint="#FBE7A1"
             tilt={-2}
           />
-          <Chip icon={retro ? 'barcode-sharp' : 'barcode-outline'} label="Item" ok={gate.itemOk} disabled={armed} onPress={() => navigation.navigate('Item')} tint="#F6CFC4" tilt={1.5} />
-          <Chip icon={retro ? 'keypad-sharp' : 'keypad-outline'} label="PIN" ok={gate.pinOk} disabled={armed} onPress={() => navigation.navigate('Pin')} tint="#D4E8C8" tilt={-1} />
+          <Chip icon={retro ? 'barcode-sharp' : 'barcode-outline'} label="Item" ok={gate.itemOk} disabled={anyArmed} onPress={() => navigation.navigate('Item')} tint="#F6CFC4" tilt={1.5} />
+          <Chip icon={retro ? 'keypad-sharp' : 'keypad-outline'} label="PIN" ok={gate.pinOk} disabled={anyArmed} onPress={() => navigation.navigate('Pin')} tint="#D4E8C8" tilt={-1} />
         </View>
       </View>
 
       {/* One main action */}
       <View style={{ gap: space.sm, marginTop: space.md }}>
         {armed ? (
-          <HoldButton key="cancel" title="Hold to cancel alarm" holdingTitle="Keep holding…" icon="close" tone="quiet" onComplete={cancelAlarm} />
+          <HoldButton key={`cancel-${sel.id}`} title={list.length > 1 ? `Hold to turn off ${timeText}` : 'Hold to cancel alarm'} holdingTitle="Keep holding…" icon="close" tone="quiet" onComplete={doCancel} />
         ) : (
-          <HoldButton key="arm" title="Hold to arm" holdingTitle="Keep holding…" icon={retro ? 'shield-checkmark-sharp' : 'shield-checkmark-outline'} disabled={armDisabled} onComplete={doArm} />
+          <HoldButton key={`arm-${sel.id}`} title={list.length > 1 ? `Hold to arm ${timeText}` : 'Hold to arm'} holdingTitle="Keep holding…" icon={retro ? 'shield-checkmark-sharp' : 'shield-checkmark-outline'} disabled={armDisabled} onComplete={doArm} />
         )}
         {!armed && gate.reasons.length > 0 && (
           <Pressable
@@ -193,7 +266,15 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<RootSt
         )}
       </View>
 
-      <TimeSheet visible={sheetOpen} startTyping={typeFirst} onClose={() => setSheetOpen(false)} />
+      <TimeSheet
+        visible={sheetOpen}
+        startTyping={typeFirst}
+        hour={sel.hour}
+        minute={sel.minute}
+        days={sel.days}
+        onSave={saveSel}
+        onClose={() => setSheetOpen(false)}
+      />
     </Screen>
   );
 }

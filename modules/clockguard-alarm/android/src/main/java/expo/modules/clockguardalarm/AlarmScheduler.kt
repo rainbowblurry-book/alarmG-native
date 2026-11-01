@@ -13,7 +13,7 @@ class ExactAlarmDeniedException : IllegalStateException("Exact alarms are not al
 /**
  * All AlarmManager work. Independent exact alarms, all via setAlarmClock()
  * (exact, wakes from Doze, shows the status-bar alarm icon):
- *  - RING: the next scheduled repeat-day ring.
+ *  - RING: the soonest ring among all alarms that are on.
  *  - SNOOZE_END: when the current snooze is over.
  *  - RESUME: restart an interrupted ring shortly after reboot.
  *  - TEST: a one-off test ring (testing-only).
@@ -89,24 +89,37 @@ object AlarmScheduler {
   }
 
   /**
-   * (Re)schedules the next repeat-day ring, or cancels it when not armed.
+   * (Re)schedules the soonest ring among all alarms that are on, or cancels it when
+   * none is on. Only ONE ring alarm is ever registered; after it rings, this runs again
+   * and lines up the next soonest one. Alarms set to the same minute ring once.
    * On failure nextTriggerAt is set to 0 so the UI shows "alarm NOT active".
    */
   fun scheduleNextRing(ctx: Context): Long? {
     cancel(ctx, ACTION_RING, REQ_RING)
     AlarmStore.setNextTriggerAt(ctx, 0L)
-    if (!AlarmStore.isArmed(ctx)) return null
-    val at = nextTrigger(
-      AlarmStore.hour(ctx), AlarmStore.minute(ctx), AlarmStore.days(ctx), System.currentTimeMillis()
-    ) ?: return null
+    AlarmStore.setNextAlarmId(ctx, "")
+    val now = System.currentTimeMillis()
+    var bestAt: Long? = null
+    var bestId = ""
+    for (a in AlarmStore.alarms(ctx)) {
+      if (!a.enabled) continue
+      val at = nextTrigger(a.hour, a.minute, a.days, now) ?: continue
+      if (bestAt == null || at < bestAt) {
+        bestAt = at
+        bestId = a.id
+      }
+    }
+    val at = bestAt ?: return null
     setExact(ctx, at, broadcast(ctx, ACTION_RING, REQ_RING))
     AlarmStore.setNextTriggerAt(ctx, at)
+    AlarmStore.setNextAlarmId(ctx, bestId)
     return at
   }
 
   fun cancelNextRing(ctx: Context) {
     cancel(ctx, ACTION_RING, REQ_RING)
     AlarmStore.setNextTriggerAt(ctx, 0L)
+    AlarmStore.setNextAlarmId(ctx, "")
   }
 
   fun scheduleSnoozeEnd(ctx: Context, at: Long) {

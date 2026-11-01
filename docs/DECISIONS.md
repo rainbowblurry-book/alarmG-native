@@ -11,7 +11,7 @@ Sources such as `3.md:906` refer to the old chat exports (`docs/chat-history/`),
 
 | ID | Decision | Reason | Source | Status |
 |---|---|---|---|---|
-| D-01 | **One alarm** with repeat days | Keep the flow simple until it is stable; multiple alarms maybe later or as a paid feature | 1.md:5, 74; 1.md:4483; 3.md:1180 | Active |
+| D-01 | **One alarm** with repeat days (superseded by D-48: up to 5) | Keep the flow simple until it is stable; multiple alarms maybe later or as a paid feature | 1.md:5, 74; 1.md:4483; 3.md:1180 | Active |
 | D-02 | **The PIN only snoozes, it never dismisses.** It must be 10 digits: not one repeated digit, not sequential, not a 2-digit repeat, at least 4 distinct digits | Snoozing must take effort, but you can't escape the mission | 1.md:80; 3.md:12693-12719; code `SetupScreen.validateSnoozePin` | Active |
 | D-03 | **Disarm by scanning a real household item.** Only the last 4 digits are shown. Manual entry is allowed only when registering in Setup, never at ring time | You have to physically get up and walk to the item | 1.md:4519; 3.md:334-378, 7918; code | Active. 3.md wanted manual entry only on camera failure; code allows it in Setup always (still not at ring time) |
 | D-04 | The **movement mission gates the scanner** | You must actually move; tapping the card must not count | 3.md:284-332; code `RingingScreen.isMovementComplete` | Active |
@@ -20,7 +20,7 @@ Sources such as `3.md:906` refer to the old chat exports (`docs/chat-history/`),
 | D-07 | Name **ClockGuard** (sorts next to the stock Clock app) | Branding | 4.md:623, 707 | Active |
 | D-08 | Remove the notification's Dismiss/Snooze action buttons | They let you skip the mission | 8.md:176; code `alarmScheduler.setupAlarmChannel` | Active |
 | D-09 | Lock the wheels, days, Setup and Settings tabs while armed | Can't weaken the alarm after arming | 7.md:1300-1358; code | Active |
-| D-10 | Wheels show the current time when not armed | Faster to set | 8.md:2172 (user); code `useCurrentTimeWhenIdle` | Active |
+| D-10 | Wheels show the current time when not armed | Faster to set | 8.md:2172 (user); code `useCurrentTimeWhenIdle` | Narrowed → D-49 |
 | D-11 | Disarm sets the alarm to "not armed" (re-arm every night) | User request, 8.md:2172 | 8.md:2172; code `dismissWake` | **Superseded → D-21** |
 | D-12 | Developer tools (Preview, Exit Preview, Simulate Pro) hidden behind a developer unlock code (removed; code no longer used) | Friend testing without removing tools | 7.md:3830-3842, 4286; issue #1 (27 Sep) | **Superseded → D-22** |
 | D-13 | Themes: 5 designer themes, then a 6th "Watch" | Visual identity experiments | 4.md:2363; 6.md:2263 | **Superseded → D-23** |
@@ -59,6 +59,8 @@ Sources such as `3.md:906` refer to the old chat exports (`docs/chat-history/`),
 | D-45 | **First-launch intro:** 4 short skippable cards (set time · move + scan · PIN only snoozes · hold to arm), then the "Get ready" checklist. Replay from Settings → How it works. Wording never promises more than the engine does | User 2026-11-01 asked for a walkthrough like normal apps | Implemented on `feature/ui-variants` |
 | D-46 | **Streaks:** days in a row where the alarm rang and the mission was completed; days without an alarm don't break it; a ring ending without the mission (90-min limit) breaks it; test rings never count; history only on the phone | User 2026-11-01 | Implemented on `feature/streaks-alarms` (Phase 1) |
 | D-47 | **Premium preview:** a feature registry with tiers (`src/logic/features.ts`); all unlocked; PRO tags on Mornings, extra alarms, wake-up check and the Paper/Field/Signal designs. Lumen stays the free default | User 2026-11-01 | Implemented on `feature/streaks-alarms` |
+| D-48 | **Multiple alarms (up to 5)**, one shared mission. The engine stores a list and registers only ONE exact ring (the soonest alarm that is on); same-minute alarms ring once. The old single alarm migrates into alarm 1 with the same on/off state. Each alarm turns on through the same gates; an alarm that is on is locked; mission setup is locked while any alarm is on. Old `arm`/`cancel` kept (arm = first alarm, cancel = all off) | User 2026-11-01 | Implemented on `feature/streaks-alarms` (Phase 2) |
+| D-49 | **D-10 narrowed:** with several alarms, an alarm that is off keeps its own time (no jump to "now"). A new alarm starts at the current time. The "now" draft only applies before the first alarm exists | Needed for multiple alarms | Implemented on `feature/streaks-alarms` |
 | D-39 | **Arming and cancelling are hold-to-confirm** (~0.9 s). Screen readers get a direct "activate" action. Arming gates unchanged (D-25, D-29) | Prevent accidental arming/cancelling | Implemented on `feature/ui-variants` |
 
 ## Technical

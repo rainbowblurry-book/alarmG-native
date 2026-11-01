@@ -7,7 +7,7 @@ import { DesignProvider } from '../context/DesignContext';
 import { setPermissionsReaderForPreview } from '../logic/useReadiness';
 import { dayKey, seedMorningsForPreview } from '../logic/mornings';
 import { AppShell } from '../../App';
-import type { AlarmState } from '../../modules/clockguard-alarm';
+import type { AlarmItem, AlarmState } from '../../modules/clockguard-alarm';
 import type { PackId } from '../theme/packs';
 import type { RootStack } from '../navigation/types';
 
@@ -38,9 +38,19 @@ if (q.get('history') !== '0') {
   }
   seedMorningsForPreview(seed);
 }
-const alarm: AlarmState = {
+const armedFirst = state !== 'idle' && state !== 'blocked';
+// ?alarms=2 shows a second alarm (08:30 weekends, off)
+const initialAlarms: AlarmItem[] = [
+  { id: 'a1', hour: 6, minute: 45, days: [1, 2, 3, 4, 5], enabled: armedFirst, nextTriggerAt: armedFirst ? now + (7 * 60 + 20) * 60000 : 0 },
+  ...(q.get('alarms') === '2' ? [{ id: 'a2', hour: 8, minute: 30, days: [0, 6], enabled: false, nextTriggerAt: 0 }] : []),
+];
+const baseAlarm: AlarmState = {
   state: state === 'ringing' || state === 'scan' ? 'ringing' : state === 'snoozed' ? 'snoozed' : 'idle',
-  armed: state !== 'idle' && state !== 'blocked',
+  armed: armedFirst,
+  alarms: initialAlarms,
+  nextAlarmId: armedFirst ? 'a1' : '',
+  ringingAlarmId: '',
+  lastMissedSession: 0,
   hour: 6,
   minute: 45,
   days: [1, 2, 3, 4, 5],
@@ -72,6 +82,12 @@ export default function PreviewApp() {
   const [settings, setSettings] = useState(baseSettings);
   const [progress, setProgress] = useState(state === 'scan' ? Number(q.get('moves') ?? 15) : Math.round(Number(q.get('moves') ?? 15) * 0.47));
   const fail = () => null;
+  const [alarm, setAlarm] = useState(baseAlarm);
+  const setList = (fn: (l: AlarmItem[]) => AlarmItem[]) =>
+    setAlarm((a) => {
+      const alarms = fn(a.alarms);
+      return { ...a, alarms, armed: alarms.some((x) => x.enabled) };
+    });
   return (
     <SafeAreaProvider>
       <SettingsContext.Provider
@@ -84,6 +100,18 @@ export default function PreviewApp() {
             incrementMovement: (max) => setProgress((p) => Math.min(max, p + 1)),
             arm: fail,
             cancelAlarm: () => {},
+            saveAlarm: (id, hour, minute, days) => {
+              setList((l) => (l.some((x) => x.id === id) ? l.map((x) => (x.id === id ? { ...x, hour, minute, days } : x)) : [...l, { id, hour, minute, days, enabled: false, nextTriggerAt: 0 }]));
+              return null;
+            },
+            setAlarmEnabled: (id, enabled) => {
+              setList((l) => l.map((x) => (x.id === id ? { ...x, enabled, nextTriggerAt: enabled ? now + 9 * 3600000 : 0 } : x)));
+              return null;
+            },
+            deleteAlarm: (id) => {
+              setList((l) => l.filter((x) => x.id !== id));
+              return null;
+            },
             snooze: fail,
             disarm: () => {},
             refresh: () => {},
