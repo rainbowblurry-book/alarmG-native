@@ -55,7 +55,8 @@
       "./plugins/withAlarmManifest.js",
       "./plugins/withLockScreenBypass.js",
       "./plugins/withAlarmClock.js",
-      "expo-font"
+      "expo-font",
+      "./plugins/withReleaseSigning.js"
     ],
     "extra": {
       "eas": {

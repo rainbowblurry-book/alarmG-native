@@ -1,0 +1,103 @@
+# ClockGuard Android APK: manual builds only (DECISIONS D-27, D-28).
+#
+# - Started by hand: Actions tab -> "Android APK (manual)" -> Run workflow -> pick the branch.
+#   No push / pull_request triggers, so nothing builds automatically and untrusted
+#   pull requests can never run this with secrets.
+# - Standard GitHub-hosted Linux runner only. No Expo/EAS cloud build, no paid service.
+# - Signing: if the ANDROID_KEYSTORE_* secrets exist, the APK is signed with that key and
+#   uploaded as an artifact (kept 3 days). Without them this is a compile check only and
+#   no installable APK is produced. Secrets are never printed; the keystore file only
+#   exists in the runner's temp folder and is deleted at the end.
+name: Android APK (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Generate native Android project
+        run: npx expo prebuild -p android --clean --no-install
+        env:
+          CI: 1
+
+      - name: Prepare signing key (from secrets, never printed)
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/clockguard-release.p12"
+            echo "CLOCKGUARD_KEYSTORE_PATH=$RUNNER_TEMP/clockguard-release.p12" >> "$GITHUB_ENV"
+            echo "SIGNED_BUILD=true" >> "$GITHUB_ENV"
+            echo "Signing secrets found: building a signed, installable APK."
+          else
+            echo "SIGNED_BUILD=false" >> "$GITHUB_ENV"
+            echo "No signing secrets: compile check only, no APK will be uploaded."
+          fi
+
+      - name: Build release APK
+        working-directory: android
+        env:
+          CLOCKGUARD_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          CLOCKGUARD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          CLOCKGUARD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Show signing certificate fingerprint (public, not secret)
+        if: env.SIGNED_BUILD == 'true'
+        run: |
+          APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner
+          "$APKSIGNER" verify --print-certs android/app/build/outputs/apk/release/app-release.apk | grep -E "SHA-256|DN" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Name the APK
+        if: env.SIGNED_BUILD == 'true'
+        run: |
+          mkdir -p dist
+          cp android/app/build/outputs/apk/release/app-release.apk "dist/ClockGuard-$(git rev-parse --short HEAD).apk"
+
+      - uses: actions/upload-artifact@v4
+        if: env.SIGNED_BUILD == 'true'
+        with:
+          name: ClockGuard-apk
+          path: dist/*.apk
+          retention-days: 3
+          if-no-files-found: error
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "Branch: ${GITHUB_REF_NAME}  Commit: ${GITHUB_SHA}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Signed installable APK: ${SIGNED_BUILD:-false}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Delete signing key from runner
+        if: always()
+        run: rm -f "$RUNNER_TEMP/clockguard-release.p12"

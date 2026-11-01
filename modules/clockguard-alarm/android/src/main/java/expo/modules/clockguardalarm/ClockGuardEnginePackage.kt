@@ -11,7 +11,7 @@ import expo.modules.core.interfaces.ReactActivityLifecycleListener
 import java.lang.ref.WeakReference
 
 /** Autolinked by Expo (file name ends in Package.kt and implements expo Package). */
-class ClockGuardAlarmPackage : Package {
+class ClockGuardEnginePackage : Package {
   override fun createReactActivityLifecycleListeners(activityContext: Context): List<ReactActivityLifecycleListener> =
     listOf(RingingActivityListener())
 }

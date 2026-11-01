@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, Animated } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, Animated, AppState, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { useSettings } from '../context/SettingsContext';
+import { useSettings, isMissionReady } from '../context/SettingsContext';
 import { useWakeFlow } from '../context/WakeFlowContext';
 import { useTheme } from '../context/ThemeContext';
 import { ThemeConfig, SEMANTIC_COLORS } from '../theme/themes';
 import WatchRotaryWheel from '../components/WatchRotaryWheel';
+import * as Alarm from '../../modules/clockguard-alarm';
+import type { AlarmPermissions } from '../../modules/clockguard-alarm';
 
 
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -21,7 +23,9 @@ const SHAPE = { md: 12, lg: 16, xl: 28, full: 999 };
 export default function AlarmScreen() {
   const insets = useSafeAreaInsets();
   const { settings, updateSettings } = useSettings();
-  const { startPreview } = useWakeFlow();
+  const { alarm, arm, cancelAlarm } = useWakeFlow();
+  const armed = alarm.armed;
+  const [perms, setPerms] = useState<AlarmPermissions>(() => Alarm.getPermissions());
   const { theme } = useTheme();
   const [currentTime, setCurrentTime] = useState(new Date());
   const buttonScale = useRef(new Animated.Value(1)).current;
@@ -32,7 +36,13 @@ export default function AlarmScreen() {
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') setPerms(Alarm.getPermissions());
+    });
+    return () => {
+      clearInterval(timer);
+      sub.remove();
+    };
   }, []);
 
 
@@ -44,7 +54,7 @@ export default function AlarmScreen() {
 
 
   const toggleDay = (dayIndex: number) => {
-    if (settings.isArmed) return;
+    if (armed) return;
     const isSelected = settings.repeatDays.includes(dayIndex);
     const newDays = isSelected
       ? settings.repeatDays.filter((d) => d !== dayIndex)
@@ -53,26 +63,55 @@ export default function AlarmScreen() {
   };
 
 
+  const noDaysSelected = settings.repeatDays.length === 0;
+  const missionReady = isMissionReady(settings);
+  // Required for a reliable alarm (D-29). Battery "Unrestricted" is advised but not required.
+  const requiredAccessMissing = !perms.notifications || !perms.exactAlarms || !perms.fullScreen;
+  const isArmButtonDisabled = !armed && (noDaysSelected || !missionReady || requiredAccessMissing);
+
   const toggleArmed = () => {
-    if (settings.repeatDays.length === 0 && !settings.isArmed) return;
-    updateSettings({ isArmed: !settings.isArmed });
+    if (armed) {
+      cancelAlarm();
+      return;
+    }
+    if (isArmButtonDisabled) return;
+    const error = arm(settings.alarmHour, settings.alarmMinute, settings.repeatDays);
+    setPerms(Alarm.getPermissions());
+    if (error) Alert.alert('Alarm NOT armed', error);
   };
 
+  // Armed, but Android has no alarm scheduled (e.g. permission revoked): say so loudly.
+  const armedButInactive = armed && alarm.state === 'idle' && !alarm.nextTriggerAt;
 
-  const noDaysSelected = settings.repeatDays.length === 0;
-  const isArmButtonDisabled = noDaysSelected && !settings.isArmed;
+  const missing: string[] = [];
+  if (!settings.wakeBarcode.trim()) missing.push('Register your wake-up item (Setup tab)');
+  if (!/^\d{10}$/.test(settings.snoozePin)) missing.push('Set your own 10-digit snooze PIN (Setup tab)');
+  if (noDaysSelected) missing.push('Select at least one day');
+  if (requiredAccessMissing) missing.push('Turn on the required phone settings listed below');
+
+  const permIssues: { label: string; page: Alarm.SettingsPage }[] = [];
+  if (!perms.notifications) permIssues.push({ label: 'Notifications are off', page: 'notifications' });
+  if (!perms.exactAlarms) permIssues.push({ label: 'Alarms & reminders permission is off', page: 'exactAlarms' });
+  if (!perms.fullScreen) permIssues.push({ label: 'Full-screen alarm permission is off', page: 'fullScreen' });
+  if (!perms.batteryUnrestricted) permIssues.push({ label: 'Advised: Battery set to Unrestricted', page: 'app' });
+
+  const ringsIn = (() => {
+    if (!armed || !alarm.nextTriggerAt) return null;
+    const mins = Math.max(0, Math.round((alarm.nextTriggerAt - currentTime.getTime()) / 60000));
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return h > 0 ? `Rings in ${h}h ${m}m` : `Rings in ${m}m`;
+  })();
 
 
-  const armGradientColors = settings.isArmed
+  const armGradientColors = armed
     ? [SEMANTIC_COLORS.error, SEMANTIC_COLORS.error]
     : isArmButtonDisabled
     ? ['#333333', '#333333']
-    : [theme.accent, theme.accentSecondary ?? theme.accent];
+    : [theme.accent, theme.accent];
 
 
-  const armIconTextColor = settings.isArmed || isArmButtonDisabled
-    ? '#FFFFFF'
-    : theme.armButtonTextColor ?? '#FFFFFF';
+  const armIconTextColor = '#FFFFFF';
 
 
   // Stage 4: tactile press feedback on the primary Arm button
@@ -90,21 +129,23 @@ export default function AlarmScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
       <LinearGradient colors={theme.ringingGradient} style={[styles.hero, { paddingTop: insets.top + 20 }]}>
-        <Text style={styles.heroLabel}>{settings.isArmed ? 'ALARM ARMED' : 'NEXT WAKE-UP'}</Text>
-        <Text style={styles.heroClock}>{formatLiveTime(currentTime)}</Text>
+        <Text style={styles.heroLabel}>{armed ? 'ALARM ARMED' : `NOW ${formatLiveTime(currentTime)}`}</Text>
+        <Text style={styles.heroClock}>
+          {String(settings.alarmHour).padStart(2, '0')}:{String(settings.alarmMinute).padStart(2, '0')}
+        </Text>
         <View style={styles.heroPill}>
           <Ionicons
-            name={settings.isArmed ? 'lock-closed' : 'time-outline'}
+            name={armed ? 'lock-closed' : 'time-outline'}
             size={13}
             color={theme.text}
           />
           <Text style={styles.heroPillText}>
-            {String(settings.alarmHour).padStart(2, '0')}:{String(settings.alarmMinute).padStart(2, '0')} - {' '}
+            {ringsIn ? `${ringsIn} · ` : ''}
             {settings.repeatDays.length === 7
               ? 'Every day'
               : settings.repeatDays.length === 0
-              ? 'Once'
-              : `${settings.repeatDays.length} day${settings.repeatDays.length > 1 ? 's' : ''}/week`}
+              ? 'No days selected'
+              : settings.repeatDays.map((d) => FULL_DAY_NAMES[d].slice(0, 3)).join(' ')}
           </Text>
         </View>
       </LinearGradient>
@@ -127,7 +168,7 @@ export default function AlarmScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.cardTitle}>Wake-up time</Text>
-                {settings.isArmed && <Text style={styles.cardCaption}>Locked while armed</Text>}
+                {armed && <Text style={styles.cardCaption}>Locked while armed</Text>}
               </View>
             </View>
 
@@ -153,9 +194,9 @@ export default function AlarmScreen() {
                     max={23}
                     onChange={(h) => updateSettings({ alarmHour: h })}
                     side="left"
-                    disabled={settings.isArmed}
+                    disabled={armed}
                     accentColor={theme.accent}
-                    accentSecondaryColor={theme.accentSecondary}
+                    accentSecondaryColor={theme.accent}
                     textColor={theme.text}
                     textSecondaryColor={theme.textSecondary}
                     backgroundColor={theme.background}
@@ -175,9 +216,9 @@ export default function AlarmScreen() {
                     max={59}
                     onChange={(m) => updateSettings({ alarmMinute: m })}
                     side="right"
-                    disabled={settings.isArmed}
+                    disabled={armed}
                     accentColor={theme.accent}
-                    accentSecondaryColor={theme.accentSecondary}
+                    accentSecondaryColor={theme.accent}
                     textColor={theme.text}
                     textSecondaryColor={theme.textSecondary}
                     backgroundColor={theme.background}
@@ -199,13 +240,13 @@ export default function AlarmScreen() {
                       styles.segment,
                       index === 0 && styles.segmentFirst,
                       isSelected && styles.segmentSelected,
-                      settings.isArmed && styles.segmentDisabled,
-                      pressed && !settings.isArmed && styles.pressed,
+                      armed && styles.segmentDisabled,
+                      pressed && !armed && styles.pressed,
                     ]}
                     onPress={() => toggleDay(index)}
                     accessibilityLabel={`Toggle ${FULL_DAY_NAMES[index]}`}
                     accessibilityState={{ selected: isSelected }}
-                    disabled={settings.isArmed}
+                    disabled={armed}
                   >
                     <Text style={[styles.segmentText, isSelected && styles.segmentTextSelected]}>{day}</Text>
                   </Pressable>
@@ -238,38 +279,61 @@ export default function AlarmScreen() {
               onPressOut={handlePressOut}
               onPress={toggleArmed}
               disabled={isArmButtonDisabled}
-              accessibilityLabel={settings.isArmed ? 'Cancel Alarm' : 'Arm Alarm'}
+              accessibilityLabel={armed ? 'Cancel Alarm' : 'Arm Alarm'}
               accessibilityHint={
                 isArmButtonDisabled ? 'Select at least one repeat day before arming the alarm.' : undefined
               }
             >
               <Ionicons
-                name={settings.isArmed ? 'close-circle' : 'shield-checkmark'}
+                name={armed ? 'close-circle' : 'shield-checkmark'}
                 size={22}
                 color={armIconTextColor}
               />
               <Text style={[styles.fabText, { color: armIconTextColor }]}>
-                {settings.isArmed ? 'Cancel alarm' : 'Arm alarm'}
+                {armed ? 'Cancel alarm' : 'Arm alarm'}
               </Text>
             </Pressable>
           </LinearGradient>
         </Animated.View>
 
 
-        {settings.isArmed && settings.devUnlocked && (
-          <>
-            <Pressable
-              style={({ pressed }) => [styles.tonalButton, pressed && styles.pressed]}
-              onPress={startPreview}
-              accessibilityLabel="Preview Wake-up Flow"
-            >
-              <Ionicons name="play-outline" size={16} color={theme.accent} />
-              <Text style={styles.tonalButtonText}>Preview wake-up flow</Text>
-            </Pressable>
-            <Text style={styles.previewHint}>
-              Preview simulates the alarm while the app is open. It does not yet run in the background.
+        {armedButInactive && (
+          <View style={[styles.infoCard, { borderWidth: 1, borderColor: SEMANTIC_COLORS.error }]}>
+            <Text style={[styles.infoTitle, { color: SEMANTIC_COLORS.error }]}>Alarm NOT active</Text>
+            <Text style={styles.infoText}>
+              Android has no alarm scheduled. Fix the phone settings below, then tap Cancel alarm and arm again.
             </Text>
-          </>
+          </View>
+        )}
+
+        {!armed && missing.length > 0 && (
+          <View style={styles.infoCard}>
+            <Text style={styles.infoTitle}>Before you can arm</Text>
+            {missing.map((m) => (
+              <View key={m} style={styles.infoRow}>
+                <Ionicons name="ellipse-outline" size={12} color={SEMANTIC_COLORS.warning} />
+                <Text style={styles.infoText}>{m}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {permIssues.length > 0 && (
+          <View style={styles.infoCard}>
+            <Text style={styles.infoTitle}>Phone settings (tap to fix)</Text>
+            {permIssues.map((p) => (
+              <Pressable
+                key={p.label}
+                style={({ pressed }) => [styles.infoRow, pressed && styles.pressed]}
+                onPress={() => Alarm.openSettings(p.page)}
+                accessibilityLabel={`Fix: ${p.label}`}
+              >
+                <Ionicons name="warning" size={14} color={SEMANTIC_COLORS.error} />
+                <Text style={[styles.infoText, { flex: 1 }]}>{p.label}</Text>
+                <Text style={styles.fixText}>Fix</Text>
+              </Pressable>
+            ))}
+          </View>
         )}
       </View>
     </ScrollView>
@@ -379,6 +443,11 @@ function createStyles(theme: ThemeConfig) {
     },
 
 
+    infoCard: { backgroundColor: theme.card, borderRadius: SHAPE.lg, padding: 16, marginBottom: 12, gap: 8 },
+    infoTitle: { color: theme.text, fontWeight: '800', fontSize: 14 },
+    infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 2 },
+    infoText: { color: theme.textSecondary, fontSize: 13 },
+    fixText: { color: theme.accent, fontWeight: '800', fontSize: 13 },
     tonalButton: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
       backgroundColor: theme.card, borderWidth: 1, borderColor: theme.accent, borderRadius: SHAPE.full, paddingVertical: 12, marginBottom: 8,
