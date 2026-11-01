@@ -37,6 +37,7 @@ modules/clockguard-alarm/     THE ALARM ENGINE (local Expo module "ClockGuardEng
     AlarmRingService.kt       foreground service: sound, vibration, wake lock, notification
     AlarmNotifications.kt     channels + ringing / relaunch / snoozed / backup notifications
     VolumeBoost.kt            optional 60% boost + restore
+    RingSession.kt            single end-of-ring cleanup (disarm, test exit, 90-min give-up)
     AlarmLauncher.kt          launch intent + in-process state bus
     ClockGuardEnginePackage.kt  activity lifecycle listener: lock-screen flags while ringing
     ClockGuardEngineModule.kt   JS functions + onStateChange event
@@ -57,6 +58,7 @@ docs/                            STATUS, DECISIONS, BUILD-AND-INSTALL, this file
 | Who | What |
 |---|---|
 | `arm(h, m, days)` | Checks notifications, exact alarms and full-screen access, otherwise throws a coded error and arms nothing. Saves the schedule and calls `setAlarmClock` for the next matching day. |
+| Ring time limit | When ringing starts, the service schedules an exact `RING_TIMEOUT` alarm for session start + 90 min (at least 5 min from now). Snooze, disarm and test exit cancel it. If it fires while still ringing, `RingSession.giveUp`: idle, volume restored, "Missed alarm" notification, still armed (D-36) |
 | `cancel()` | Schedule off. Never stops an active ring or snooze. |
 | `AlarmReceiver` RING | `startNewRing`, starts `AlarmRingService`, and schedules the next repeat day in `finally`. If the service can't start, it posts a backup notification whose own sound loops (FLAG_INSISTENT). |
 | `AlarmRingService` | Foreground service (`systemExempted`, else `mediaPlayback`). Plays a looping MediaPlayer with USAGE_ALARM, vibrates, holds a partial wake lock, and posts an ongoing CATEGORY_ALARM notification with a full-screen intent. `stopWithTask=false` and START_STICKY. |

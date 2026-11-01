@@ -34,6 +34,10 @@ Legend:
   - **Problem:** clearing or editing the PIN box never changed the saved PIN (that part was correct), but the screen didn't say so, and it showed no "Set" badge for the PIN.
   - **Fix (`e430fb3`):** a Set / Not set badge based on the *saved* PIN. The box starts empty, so the saved PIN is no longer shown in plain text. While you type, a hint says "not saved yet; your current PIN (••xx) stays active until you tap Save PIN" [code].
 
+## On branch `feature/ring-time-limit` (UNTESTED on device)
+- **90-minute ring limit** (D-36): if nobody does the mission or a PIN snooze, ringing stops 90 minutes after it started, with a "Missed alarm" notification; the alarm stays set for the next day [code].
+- Device test to add: arm, let it ring without touching it. At about 90 minutes it should stop, the "Missed alarm" notification appears, and the Alarm tab still shows it armed for the next day. Quicker check: Settings → Test alarm and leave it; it also stops at 90 minutes.
+
 ## Known limitations (honest)
 - **Force stop** (App info → Force stop) cancels all alarms until the app is opened again. This is an Android rule. **Removing the app from Recents is fine**: the alarm and ringing survive it [device, test 4].
 - The ringing-service restart after a system kill is requested, not guaranteed. Keep Battery set to Unrestricted.

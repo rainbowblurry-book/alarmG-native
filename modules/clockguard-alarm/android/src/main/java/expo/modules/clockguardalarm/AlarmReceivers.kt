@@ -30,6 +30,9 @@ class AlarmReceiver : BroadcastReceiver() {
           AlarmStore.resumeRing(context)
           AlarmRingService.start(context)
         }
+        AlarmScheduler.ACTION_RING_TIMEOUT -> {
+          if (AlarmStore.state(context) == AlarmStore.STATE_RINGING) RingSession.giveUp(context)
+        }
         AlarmScheduler.ACTION_RESUME -> {
           if (AlarmStore.state(context) != AlarmStore.STATE_RINGING) return
           AlarmRingService.start(context)

@@ -153,6 +153,9 @@ class AlarmRingService : Service() {
     startSound()
     startVibration()
     registerScreenReceiver()
+    // 90-minute limit, via an exact alarm so it still fires if this process is killed.
+    runCatching { AlarmScheduler.scheduleRingTimeout(this) }
+      .onFailure { Log.e(TAG, "Could not schedule ring time limit", it) }
     handler.postDelayed(keepAlive, KEEPALIVE_INTERVAL_MS)
     AlarmStateBus.notifyChanged(this)
   }

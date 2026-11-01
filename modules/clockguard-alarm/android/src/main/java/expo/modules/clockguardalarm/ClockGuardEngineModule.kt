@@ -94,6 +94,7 @@ class ClockGuardEngineModule : Module() {
       } catch (e: Exception) {
         throw CodedException("ERR_SNOOZE_FAILED", "Could not schedule the snooze; the alarm keeps ringing", e)
       }
+      AlarmScheduler.cancelRingTimeout(ctx)
       AlarmStore.startSnooze(ctx, until)
       AlarmRingService.stop(ctx)
       VolumeBoost.restore(ctx)
@@ -106,14 +107,8 @@ class ClockGuardEngineModule : Module() {
     Function("disarm") {
       val ctx = context
       if (AlarmStore.state(ctx) == AlarmStore.STATE_IDLE) return@Function false
-      AlarmScheduler.cancelSnoozeEnd(ctx)
-      AlarmStore.setIdle(ctx)
-      AlarmRingService.stop(ctx)
-      VolumeBoost.restore(ctx)
-      AlarmNotifications.cancelSnoozed(ctx)
       // If rescheduling fails, nextTriggerAt stays 0 and the UI shows "alarm NOT active".
-      runCatching { AlarmScheduler.scheduleNextRing(ctx) }
-      AlarmStateBus.notifyChanged(ctx)
+      RingSession.end(ctx)
       true
     }
 
@@ -152,12 +147,7 @@ class ClockGuardEngineModule : Module() {
     Function("stopTestRing") {
       val ctx = context
       if (AlarmStore.state(ctx) == AlarmStore.STATE_IDLE || !AlarmStore.isTestRing(ctx)) return@Function false
-      AlarmScheduler.cancelSnoozeEnd(ctx)
-      AlarmStore.setIdle(ctx)
-      AlarmRingService.stop(ctx)
-      VolumeBoost.restore(ctx)
-      AlarmNotifications.cancelSnoozed(ctx)
-      AlarmStateBus.notifyChanged(ctx)
+      RingSession.end(ctx)
       true
     }
     // TESTING-ONLY END
