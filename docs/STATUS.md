@@ -39,7 +39,7 @@ Legend:
 - Device test to add: arm, let it ring without touching it. At about 90 minutes it should stop, the "Missed alarm" notification appears, and the Alarm tab still shows it armed for the next day. Quicker check: Settings → Test alarm and leave it; it also stops at 90 minutes.
 
 ## On branch `feature/ui-variants`: new UI (UNTESTED on device)
-- **Restore point:** tag `ui-restore-build9` = commit `9a657bb` = CI build #9. To go back: `git checkout -B feature/ui-variants ui-restore-build9` (ask first; it rewrites the branch). Default design: Lumen.
+- **Restore point:** branch `restore/ui-build9` = commit `9a657bb` = CI build #9 (do not commit to it). To go back: reset `feature/ui-variants` to it (ask first; it rewrites the branch), or just run the APK workflow on `restore/ui-build9`. Default design: Lumen.
 - 4 designs in one APK: **Lumen** (modern graphite + volt, bento tiles; replaced Ember), **Paper** (handwritten notebook; dark notebook with tally marks when ringing), **Field** (moss dark, sun-over-hill ringing), **Signal** (retro 90s desktop, amber CRT ringing). Switch in Settings → Design (testing only) [code].
 - Home without tabs, hold-to-arm / hold-to-cancel, Mission chips (Move · Item · PIN), time/days bottom sheet, grouped Settings, first-launch "Get ready" checklist, crash screen with a Copy button [code].
 - Engine (`modules/clockguard-alarm`) **not changed**. Ringing logic (movement gate, barcode check, PIN check, Back blocking) is the same code with a new look [code].
@@ -68,5 +68,5 @@ Legend:
 | [#2](https://github.com/rainbowblurry-book/alarmG-native/actions/runs/41297448823) | `6677b78` new engine only | Compile OK, engine linked, 0 warnings in our code [CI] |
 | [#3](https://github.com/rainbowblurry-book/alarmG-native/actions/runs/41301001456) | `f7e5688` | Signed APK produced; the one installed and device-tested [CI] |
 | [#5](https://github.com/rainbowblurry-book/alarmG-native/actions/runs/41319164432) | `ec6dfcd` | First UI build (Ember/Paper v1); signed APK produced, superseded [CI] |
-| [#9](https://github.com/rainbowblurry-book/alarmG-native/actions/runs/41326096935) | `9a657bb` | UI build to test; **restore point**: git tag `ui-restore-build9` [CI] |
+| [#9](https://github.com/rainbowblurry-book/alarmG-native/actions/runs/41326096935) | `9a657bb` | UI build to test; **restore point**: branch `restore/ui-build9` [CI] |
 | #6–#8 | `9ff5f30`, `616a6fa`, `9bb38bb` | UI iterations (Lumen/notebook Paper, pickers, typing/snooze/movement); superseded by #9 [CI] |
