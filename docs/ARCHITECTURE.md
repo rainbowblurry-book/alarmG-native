@@ -5,9 +5,9 @@
 
 ## 1. What the app is
 An Android-only alarm clock. When it rings you can't simply dismiss it:
-1. **Movement:** the accelerometer must count N movements (default 15, configurable, optional).
+1. **Movement:** the accelerometer must count N movements (default 15, 10–500, optional).
 2. **Barcode:** you scan the household item you registered in Setup.
-3. **Snooze** is only possible with your own 10-digit PIN. Optional cruelty mode halves each further snooze (floor 20 s).
+3. **Snooze** is only possible with your own 10-digit PIN. Snooze length 1–20 min (default 5). Optional cruelty mode halves each further snooze (floor 20 s).
 
 There is one alarm with repeat days (Sun=0 … Sat=6).
 

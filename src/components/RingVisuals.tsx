@@ -111,7 +111,10 @@ export function MoveProgress({ pack, count, target }: { pack: DesignPack; count:
 
   if (pack.id === 'paper') {
     // Hand-drawn tally marks: four strokes and a slash per group of five.
-    const groups = Math.ceil(target / 5);
+    // Up to 50 marks; for bigger targets each mark stands for several moves.
+    const marks = Math.min(target, 50);
+    const groups = Math.ceil(marks / 5);
+    const litMarks = target > 50 ? Math.floor(p * marks) : count;
     const jitter = (i: number) => Math.sin(i * 12.9898) * 1.6;
     return (
       <View style={{ alignItems: 'center', gap: 6 }}>
@@ -120,14 +123,14 @@ export function MoveProgress({ pack, count, target }: { pack: DesignPack; count:
             <Svg key={g} width={52} height={58} viewBox="0 0 52 58">
               {[0, 1, 2, 3].map((k) => {
                 const i = g * 5 + k;
-                if (i >= target) return null;
+                if (i >= marks) return null;
                 const x = 8 + k * 11;
                 return (
-                  <Line key={k} x1={x + jitter(i)} y1={6 + jitter(i + 3)} x2={x - jitter(i + 1)} y2={52 + jitter(i + 5)} stroke={i < count ? r.accent : r.track} strokeWidth={3} strokeLinecap="round" />
+                  <Line key={k} x1={x + jitter(i)} y1={6 + jitter(i + 3)} x2={x - jitter(i + 1)} y2={52 + jitter(i + 5)} stroke={i < litMarks ? r.accent : r.track} strokeWidth={3} strokeLinecap="round" />
                 );
               })}
-              {g * 5 + 4 < target && (
-                <Line x1={2} y1={44 + jitter(g)} x2={50} y2={12 + jitter(g + 2)} stroke={g * 5 + 4 < count ? r.accent : r.track} strokeWidth={3} strokeLinecap="round" />
+              {g * 5 + 4 < marks && (
+                <Line x1={2} y1={44 + jitter(g)} x2={50} y2={12 + jitter(g + 2)} stroke={g * 5 + 4 < litMarks ? r.accent : r.track} strokeWidth={3} strokeLinecap="round" />
               )}
             </Svg>
           ))}

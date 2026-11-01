@@ -20,6 +20,8 @@ export type AlarmSettings = {
   movementEnabled: boolean;
   movementTarget: number;
   crueltyModeEnabled: boolean;
+  /** Snooze length in minutes, 1-20 (default 5). Cruelty mode halves from here. */
+  snoozeMinutes: number;
   /** Optional, default OFF: raise a low ALARM volume to 60% once when ringing starts (D-30). */
   volumeBoostEnabled: boolean;
 };
@@ -41,8 +43,13 @@ const DEFAULT_SETTINGS: AlarmSettings = {
   movementEnabled: true,
   movementTarget: 15,
   crueltyModeEnabled: false,
+  snoozeMinutes: 5,
   volumeBoostEnabled: false,
 };
+
+/** Allowed ranges (also used by the setup screens). */
+export const MOVEMENT_RANGE = { min: 10, max: 500 } as const;
+export const SNOOZE_RANGE = { min: 1, max: 20 } as const;
 
 const isInt = (v: unknown, min: number, max: number): v is number =>
   typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
@@ -66,7 +73,9 @@ function sanitize(data: unknown): AlarmSettings {
     out.snoozePin = d.snoozePin;
   }
   if (typeof d.movementEnabled === 'boolean') out.movementEnabled = d.movementEnabled;
-  if (isInt(d.movementTarget, 5, 50)) out.movementTarget = d.movementTarget;
+  // Old builds allowed 5-50; anything under the new minimum falls back to the default.
+  if (isInt(d.movementTarget, MOVEMENT_RANGE.min, MOVEMENT_RANGE.max)) out.movementTarget = d.movementTarget;
+  if (isInt(d.snoozeMinutes, SNOOZE_RANGE.min, SNOOZE_RANGE.max)) out.snoozeMinutes = d.snoozeMinutes;
   if (typeof d.crueltyModeEnabled === 'boolean') out.crueltyModeEnabled = d.crueltyModeEnabled;
   if (typeof d.volumeBoostEnabled === 'boolean') out.volumeBoostEnabled = d.volumeBoostEnabled;
   return out;

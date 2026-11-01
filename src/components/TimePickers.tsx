@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { PanResponder, Pressable, ScrollView, StyleSheet, Text, TextStyle, View } from 'react-native';
+import { PanResponder, Pressable, ScrollView, StyleSheet, Text, TextInput, TextStyle, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
@@ -148,16 +148,27 @@ function arc(cx: number, cy: number, r: number, from: number, to: number) {
 /** Angle of a point around a centre, 0° = top, -180..180, clockwise positive. */
 const angleOf = (dx: number, dy: number) => (Math.atan2(dx, -dy) * 180) / Math.PI;
 
-type PickerProps = { pack: DesignPack; hour: number; minute: number; onChange: (h: number, m: number) => void };
+type PickerProps = { pack: DesignPack; hour: number; minute: number; onChange: (h: number, m: number) => void; onTapTime?: () => void };
+
+/** The picker's time readout: tap it to type the time instead. */
+function TapTime({ onTap, children }: { onTap?: () => void; children: React.ReactNode }) {
+  return (
+    <Pressable onPress={onTap} accessibilityRole="button" accessibilityLabel="Type the time" hitSlop={8} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, alignSelf: 'center' })}>
+      {children}
+    </Pressable>
+  );
+}
 
 /**
  * Tracks a drag inside a box using the touch-start position + gesture delta, so it
  * works no matter which child was touched. `onPoint` gets box coordinates.
  */
-function useBoxDrag(onPoint: (x: number, y: number, first: boolean) => void) {
+function useBoxDrag(onPoint: (x: number, y: number, first: boolean) => void, onEnd?: (moved: boolean) => void) {
   const start = useRef({ x: 0, y: 0 });
   const cb = useRef(onPoint);
   cb.current = onPoint;
+  const end = useRef(onEnd);
+  end.current = onEnd;
   return useMemo(
     () =>
       PanResponder.create({
@@ -169,27 +180,33 @@ function useBoxDrag(onPoint: (x: number, y: number, first: boolean) => void) {
           cb.current(start.current.x, start.current.y, true);
         },
         onPanResponderMove: (_, g) => cb.current(start.current.x + g.dx, start.current.y + g.dy, false),
+        onPanResponderRelease: (_, g) => end.current?.(Math.hypot(g.dx, g.dy) > 8),
       }),
     []
   );
 }
 
 // ───────────────────────── Lumen: two arc sliders (outer = hours, inner = minutes)
-function LumenDial({ pack, hour, minute, onChange }: PickerProps) {
+function LumenDial({ pack, hour, minute, onChange, onTapTime }: PickerProps) {
   const c = pack.colors;
   const S = 280;
   const C = S / 2;
   const R1 = 124;
   const R2 = 92;
   const SWEEP = 135;
-  const ring = useRef<'h' | 'm'>('h');
+  const ring = useRef<'h' | 'm' | 'tap'>('h');
   const now = useRef({ hour, minute });
   now.current = { hour, minute };
 
   const pan = useBoxDrag((x, y, first) => {
     const dx = x - C;
     const dy = y - C;
-    if (first) ring.current = Math.abs(Math.hypot(dx, dy) - R1) < Math.abs(Math.hypot(dx, dy) - R2) ? 'h' : 'm';
+    if (first) {
+      const d = Math.hypot(dx, dy);
+      // touching the centre = tap to type the time
+      ring.current = d < R2 - 22 ? 'tap' : Math.abs(d - R1) < Math.abs(d - R2) ? 'h' : 'm';
+    }
+    if (ring.current === 'tap') return;
     const a = angleOf(dx, dy);
     if (Math.abs(a) > SWEEP) return; // in the gap at the bottom: keep the value
     const t = (a + SWEEP) / (SWEEP * 2);
@@ -200,6 +217,8 @@ function LumenDial({ pack, hour, minute, onChange }: PickerProps) {
       tick();
       ring.current === 'h' ? onChange(v, now.current.minute) : onChange(now.current.hour, v);
     }
+  }, (moved) => {
+    if (ring.current === 'tap' && !moved) onTapTime?.();
   });
 
   const deg = (v: number, max: number) => -SWEEP + (v / max) * SWEEP * 2;
@@ -224,7 +243,7 @@ function LumenDial({ pack, hour, minute, onChange }: PickerProps) {
         <Text style={{ fontFamily: pack.fonts.display, fontSize: 44, color: c.text, fontVariant: ['tabular-nums'] }}>
           {pad2(hour)}:{pad2(minute)}
         </Text>
-        <Text style={{ fontFamily: pack.fonts.body, fontSize: 12, color: c.textDim, marginTop: 2 }}>outer hour · inner minutes</Text>
+        <Text style={{ fontFamily: pack.fonts.body, fontSize: 12, color: c.textDim, marginTop: 2 }}>tap to type</Text>
       </View>
     </View>
   );
@@ -288,13 +307,15 @@ function Tape({ pack, value, max, unit, labelEvery, title, onChange }: { pack: D
   );
 }
 
-function PaperTapes({ pack, hour, minute, onChange }: PickerProps) {
+function PaperTapes({ pack, hour, minute, onChange, onTapTime }: PickerProps) {
   const c = pack.colors;
   return (
     <View style={{ gap: space.sm }}>
-      <Text style={{ alignSelf: 'center', fontFamily: pack.fonts.display, fontSize: 64, color: c.text }}>
-        {pad2(hour)}:{pad2(minute)}
-      </Text>
+      <TapTime onTap={onTapTime}>
+        <Text style={{ alignSelf: 'center', fontFamily: pack.fonts.display, fontSize: 64, color: c.text }}>
+          {pad2(hour)}:{pad2(minute)}
+        </Text>
+      </TapTime>
       <Tape pack={pack} title="hour" value={hour} max={23} unit={28} labelEvery={3} onChange={(h) => onChange(h, minute)} />
       <Tape pack={pack} title="minutes" value={minute} max={59} unit={12} labelEvery={10} onChange={(m) => onChange(hour, m)} />
     </View>
@@ -302,7 +323,7 @@ function PaperTapes({ pack, hour, minute, onChange }: PickerProps) {
 }
 
 // ───────────────────────── Field: drag the sun over the hill (hours) + a horizon slider (minutes)
-function FieldSun({ pack, hour, minute, onChange }: PickerProps) {
+function FieldSun({ pack, hour, minute, onChange, onTapTime }: PickerProps) {
   const c = pack.colors;
   const W = 300;
   const H = 170;
@@ -338,9 +359,11 @@ function FieldSun({ pack, hour, minute, onChange }: PickerProps) {
 
   return (
     <View style={{ alignItems: 'center', gap: space.md }}>
-      <Text style={{ fontFamily: pack.fonts.display, fontSize: 56, color: c.text, fontVariant: ['tabular-nums'] }}>
-        {pad2(hour)}:{pad2(minute)}
-      </Text>
+      <TapTime onTap={onTapTime}>
+        <Text style={{ fontFamily: pack.fonts.display, fontSize: 56, color: c.text, fontVariant: ['tabular-nums'] }}>
+          {pad2(hour)}:{pad2(minute)}
+        </Text>
+      </TapTime>
       <View style={{ width: W, height: H }} {...sunPan.panHandlers} accessibilityLabel="Drag the sun to set the hour">
         <Svg width={W} height={H} pointerEvents="none">
           <Path d={arc(CX, CY, R, -90, 90)} stroke={c.border} strokeWidth={2} strokeDasharray="4 7" fill="none" />
@@ -391,7 +414,7 @@ function RepeatButton({ icon, label, onStep }: { icon: 'caret-up-sharp' | 'caret
   );
 }
 
-function SignalClock({ pack, hour, minute, onChange }: PickerProps) {
+function SignalClock({ pack, hour, minute, onChange, onTapTime }: PickerProps) {
   const now = useRef({ hour, minute });
   now.current = { hour, minute };
   const bump = (part: 'h' | 'm', d: number) => {
@@ -407,16 +430,72 @@ function SignalClock({ pack, hour, minute, onChange }: PickerProps) {
   );
   return (
     <View style={{ gap: space.sm }}>
-      <View style={[{ backgroundColor: '#14100A', alignItems: 'center', paddingVertical: 4 }, bevel(true)]}>
+      <Pressable onPress={onTapTime} accessibilityRole="button" accessibilityLabel="Type the time" style={[{ backgroundColor: '#14100A', alignItems: 'center', paddingVertical: 4 }, bevel(true)]}>
         <Text style={{ fontFamily: pack.fonts.display, fontSize: 104, color: '#FFB000', lineHeight: 104 }}>
           {pad2(hour)}:{pad2(minute)}
         </Text>
-      </View>
+      </Pressable>
       <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
         {col('h', 'Hour')}
         {col('m', 'Minutes')}
       </View>
-      <Text style={{ fontFamily: pack.fonts.body, fontSize: 18, color: '#3F3F3F', textAlign: 'center' }}>Hold a button to run fast</Text>
+      <Text style={{ fontFamily: pack.fonts.body, fontSize: 18, color: '#3F3F3F', textAlign: 'center' }}>Hold ▲▼ to run fast · tap the time to type</Text>
+    </View>
+  );
+}
+
+const PICKER_NAME = { lumen: 'Use the dial', paper: 'Use the rulers', field: 'Use the sun', signal: 'Use the ▲▼ buttons' } as const;
+
+/** Digits → "HH:MM" while typing: 6 → 6, 645 → 6:45, 0645 → 06:45. */
+export function parseTyped(d: string): { h: number; m: number } | null {
+  if (!d) return null;
+  const h = d.length <= 2 ? parseInt(d, 10) : parseInt(d.slice(0, d.length - 2), 10);
+  const m = d.length <= 2 ? 0 : parseInt(d.slice(-2), 10);
+  return h >= 0 && h <= 23 && m >= 0 && m <= 59 ? { h, m } : null;
+}
+const formatTyped = (d: string) => (d.length <= 2 ? d : `${d.slice(0, d.length - 2)}:${d.slice(-2)}`);
+
+/** Type the time with the number keyboard. */
+export function TypeTime({ pack, digits, onDigits, onSubmit, onUsePicker }: { pack: DesignPack; digits: string; onDigits: (d: string) => void; onSubmit: () => void; onUsePicker?: () => void }) {
+  const c = pack.colors;
+  const retro = pack.chrome === 'bevel';
+  const valid = parseTyped(digits);
+  return (
+    <View style={{ alignItems: 'center', gap: space.sm, paddingVertical: space.md }}>
+      <TextInput
+        autoFocus
+        value={formatTyped(digits)}
+        onChangeText={(t) => onDigits(t.replace(/\D/g, '').slice(0, 4))}
+        onSubmitEditing={onSubmit}
+        keyboardType="number-pad"
+        returnKeyType="done"
+        placeholder="06:45"
+        placeholderTextColor={retro ? '#5A4200' : c.border}
+        accessibilityLabel="Type the alarm time, hours and minutes"
+        style={{
+          fontFamily: pack.fonts.display,
+          fontSize: retro ? 96 : 64,
+          color: retro ? '#FFB000' : c.text,
+          textAlign: 'center',
+          width: retro ? 260 : 240,
+          padding: 0,
+          borderWidth: 0,
+          borderBottomWidth: retro ? 0 : 2,
+          borderColor: c.accent,
+          backgroundColor: retro ? '#14100A' : 'transparent',
+          fontVariant: ['tabular-nums'],
+        }}
+      />
+      <Text style={{ fontFamily: pack.fonts.body, fontSize: retro ? 18 : 13, color: digits && !valid ? c.danger : c.textDim }}>
+        {digits && !valid ? 'Not a valid time (00:00 – 23:59)' : 'Type 4 digits, e.g. 0645'}
+      </Text>
+      {onUsePicker && (
+        <Pressable onPress={onUsePicker} accessibilityRole="button" hitSlop={8} style={{ minHeight: 40, justifyContent: 'center' }}>
+          <Text style={{ fontFamily: pack.fonts.medium, fontSize: retro ? 19 : 14, color: retro ? '#000' : c.accent, textDecorationLine: 'underline' }}>
+            {PICKER_NAME[pack.id]}
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }

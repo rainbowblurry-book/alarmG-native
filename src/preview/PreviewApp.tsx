@@ -48,14 +48,15 @@ const baseSettings: AlarmSettings = {
   wakeBarcode: state === 'blocked' ? '' : '7310865004703',
   snoozePin: '4829170356',
   movementEnabled: true,
-  movementTarget: 15,
+  movementTarget: Number(q.get('moves') ?? 15),
   crueltyModeEnabled: false,
+  snoozeMinutes: 5,
   volumeBoostEnabled: false,
 };
 
 export default function PreviewApp() {
   const [settings, setSettings] = useState(baseSettings);
-  const [progress, setProgress] = useState(state === 'scan' ? 15 : 7);
+  const [progress, setProgress] = useState(state === 'scan' ? Number(q.get('moves') ?? 15) : Math.round(Number(q.get('moves') ?? 15) * 0.47));
   const fail = () => null;
   return (
     <SafeAreaProvider>

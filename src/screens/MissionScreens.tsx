@@ -3,7 +3,7 @@ import { Linking, StyleSheet, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCameraPermissions } from 'expo-camera';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useSettings } from '../context/SettingsContext';
+import { MOVEMENT_RANGE, SNOOZE_RANGE, useSettings } from '../context/SettingsContext';
 import { useWakeFlow } from '../context/WakeFlowContext';
 import { useDesign } from '../context/DesignContext';
 import { bevel, Btn, ExplainRow, Header, Screen, space, Stepper, Surface, Toggle, Txt } from '../components/ui';
@@ -228,10 +228,22 @@ export function PinScreen({ navigation }: NativeStackScreenProps<RootStack, 'Pin
         <Btn title="Save PIN" icon="checkmark" onPress={handleSavePin} disabled={pinDraft.length !== 10} accessibilityLabel="Save snooze PIN" />
       </Surface>
 
+      <Surface style={{ gap: space.sm }}>
+        <Txt variant="headline">Snooze length</Txt>
+        <Stepper
+          value={settings.snoozeMinutes}
+          onChange={(v) => updateSettings({ snoozeMinutes: v })}
+          min={SNOOZE_RANGE.min}
+          max={SNOOZE_RANGE.max}
+          step={1}
+          unit="minutes"
+        />
+      </Surface>
+
       <Surface>
         <ExplainRow
           title="Cruelty mode"
-          explain="Every snooze is half as long as the one before (5 min, 2.5 min, …, at least 20 s)."
+          explain={`Every snooze is half as long as the one before (${settings.snoozeMinutes} min, then half, …, at least 20 s).`}
           right={
             <Toggle
               label="Cruelty mode"
@@ -261,7 +273,7 @@ export function MovementScreen({ navigation }: NativeStackScreenProps<RootStack,
         />
         {settings.movementEnabled && (
           <View style={{ paddingVertical: space.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: pack.colors.border }}>
-            <Stepper value={settings.movementTarget} onChange={(v) => updateSettings({ movementTarget: v })} min={5} max={50} step={5} unit="moves" />
+            <Stepper value={settings.movementTarget} onChange={(v) => updateSettings({ movementTarget: v })} min={MOVEMENT_RANGE.min} max={MOVEMENT_RANGE.max} step={5} unit="moves" />
           </View>
         )}
       </Surface>

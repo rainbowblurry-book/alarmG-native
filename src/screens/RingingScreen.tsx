@@ -146,7 +146,7 @@ export default function RingingScreen() {
     setPinError(false);
   };
 
-  const nextSnoozeSeconds = snoozeDurationSeconds(alarm.snoozeCount, settings.crueltyModeEnabled);
+  const nextSnoozeSeconds = snoozeDurationSeconds(alarm.snoozeCount, settings.crueltyModeEnabled, settings.snoozeMinutes);
 
   const handleConfirmPin = () => {
     if (settings.snoozePin && enteredPin === settings.snoozePin) {

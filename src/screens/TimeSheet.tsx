@@ -3,12 +3,12 @@ import { Pressable, Text, View } from 'react-native';
 import { useSettings } from '../context/SettingsContext';
 import { useWakeFlow } from '../context/WakeFlowContext';
 import { useDesign } from '../context/DesignContext';
-import { SignaturePicker } from '../components/TimePickers';
+import { parseTyped, SignaturePicker, TypeTime } from '../components/TimePickers';
 import { bevel, Btn, Sheet, space, Txt } from '../components/ui';
 import { DAY_NAMES, DAY_SHORT } from '../logic/useReadiness';
 
 /** Bottom sheet: the design's own time picker + repeat days. Never opened while armed (D-09). */
-export default function TimeSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+export default function TimeSheet({ visible, onClose, startTyping = false }: { visible: boolean; onClose: () => void; startTyping?: boolean }) {
   const { pack } = useDesign();
   const c = pack.colors;
   const { settings, updateSettings } = useSettings();
@@ -24,19 +24,46 @@ export default function TimeSheet({ visible, onClose }: { visible: boolean; onCl
 
   // Draft while the sheet is open; saved when it closes (fewer storage writes while dragging).
   const [draft, setDraft] = useState({ h: settings.alarmHour, m: settings.alarmMinute });
+  // Typing mode: tap the time in any picker to type it.
+  const [typing, setTyping] = useState(false);
+  const [digits, setDigits] = useState('');
   useEffect(() => {
-    if (visible) setDraft({ h: settings.alarmHour, m: settings.alarmMinute });
+    if (visible) {
+      setDraft({ h: settings.alarmHour, m: settings.alarmMinute });
+      setTyping(startTyping);
+      setDigits('');
+    }
   }, [visible]);
+  const finishTyping = () => {
+    const t = parseTyped(digits);
+    if (t) setDraft(t);
+    setTyping(false);
+    return t;
+  };
   const close = () => {
-    if (!locked && (draft.h !== settings.alarmHour || draft.m !== settings.alarmMinute)) {
-      updateSettings({ alarmHour: draft.h, alarmMinute: draft.m });
+    const final = (typing && parseTyped(digits)) || draft;
+    if (!locked && (final.h !== settings.alarmHour || final.m !== settings.alarmMinute)) {
+      updateSettings({ alarmHour: final.h, alarmMinute: final.m });
     }
     onClose();
   };
 
   return (
     <Sheet visible={visible} onClose={close} title="Alarm time">
-      <SignaturePicker pack={pack} hour={draft.h} minute={draft.m} onChange={(h, m) => setDraft({ h, m })} />
+      {typing ? (
+        <TypeTime pack={pack} digits={digits} onDigits={setDigits} onSubmit={finishTyping} onUsePicker={finishTyping} />
+      ) : (
+        <SignaturePicker
+          pack={pack}
+          hour={draft.h}
+          minute={draft.m}
+          onChange={(h, m) => setDraft({ h, m })}
+          onTapTime={() => {
+            setDigits('');
+            setTyping(true);
+          }}
+        />
+      )}
       <View style={{ flexDirection: 'row', gap: 6 }}>
         {DAY_SHORT.map((d, i) => {
           const on = settings.repeatDays.includes(i);

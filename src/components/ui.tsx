@@ -2,12 +2,14 @@ import React, { ReactNode, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
+  KeyboardAvoidingView,
   Modal,
   Pressable,
   ScrollView,
   StyleProp,
   StyleSheet,
   Text,
+  TextInput,
   TextStyle,
   View,
   ViewStyle,
@@ -625,13 +627,48 @@ export function SectionLabel({ children }: { children: string }) {
   );
 }
 
+/**
+ * Number stepper: tap −/+ for one step, hold to run (it speeds up), or tap the
+ * number to type it. Always kept inside min..max.
+ */
 export function Stepper({ value, onChange, min, max, step, unit }: { value: number; onChange: (v: number) => void; min: number; max: number; step: number; unit: string }) {
   const { pack } = useDesign();
   const c = pack.colors;
   const retro = pack.chrome === 'bevel';
-  const btn = (icon: IconName, delta: number, label: string) => (
+  const clamp = (v: number) => Math.min(max, Math.max(min, v));
+  const valueRef = useRef(value);
+  valueRef.current = value;
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [typing, setTyping] = useState(false);
+  const [draft, setDraft] = useState('');
+
+  const stop = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+  };
+  useEffect(() => stop, []);
+  const bump = (dir: 1 | -1, n: number) => {
+    const next = clamp(valueRef.current + dir * step * n);
+    if (next !== valueRef.current) {
+      valueRef.current = next;
+      onChange(next);
+      Haptics.selectionAsync().catch(() => {});
+    }
+  };
+  const run = (dir: 1 | -1, delay: number, count: number) => {
+    timer.current = setTimeout(() => {
+      bump(dir, count > 20 ? 4 : count > 10 ? 2 : 1);
+      run(dir, Math.max(50, delay * 0.85), count + 1);
+    }, delay);
+  };
+
+  const btn = (icon: IconName, dir: 1 | -1, label: string) => (
     <Pressable
-      onPress={() => onChange(Math.min(max, Math.max(min, value + delta)))}
+      onPressIn={() => {
+        bump(dir, 1);
+        run(dir, 400, 0);
+      }}
+      onPressOut={stop}
       accessibilityRole="button"
       accessibilityLabel={label}
       style={({ pressed }) => [
@@ -642,14 +679,52 @@ export function Stepper({ value, onChange, min, max, step, unit }: { value: numb
       <Ionicons name={icon} size={22} color={c.text} />
     </Pressable>
   );
+
+  const commit = () => {
+    const n = parseInt(draft, 10);
+    if (!Number.isNaN(n)) onChange(clamp(n));
+    setTyping(false);
+  };
+
+  const numStyle: TextStyle = { fontFamily: pack.fonts.display, fontSize: 56, color: c.text, fontVariant: ['tabular-nums'], textAlign: 'center', minWidth: 120 };
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-      {btn('remove', -step, `Decrease ${unit}`)}
-      <View style={{ alignItems: 'center' }}>
-        <Text style={{ fontFamily: pack.fonts.display, fontSize: 56, color: c.text, fontVariant: ['tabular-nums'] }}>{value}</Text>
-        <Txt variant="label">{unit}</Txt>
+    <View style={{ gap: 4 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        {btn('remove', -1, `Decrease ${unit}`)}
+        <View style={{ alignItems: 'center' }}>
+          {typing ? (
+            <TextInput
+              autoFocus
+              value={draft}
+              onChangeText={(t) => setDraft(t.replace(/\D/g, '').slice(0, String(max).length))}
+              onSubmitEditing={commit}
+              onBlur={commit}
+              keyboardType="number-pad"
+              returnKeyType="done"
+              placeholder={String(value)}
+              placeholderTextColor={c.border}
+              accessibilityLabel={`Type ${unit}, ${min} to ${max}`}
+              style={[numStyle, { width: 140, borderWidth: 0, borderBottomWidth: 2, borderColor: c.accent, padding: 0 }]}
+            />
+          ) : (
+            <Pressable
+              onPress={() => {
+                setDraft('');
+                setTyping(true);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`${value} ${unit}. Tap to type a number.`}
+            >
+              <Text style={numStyle}>{value}</Text>
+            </Pressable>
+          )}
+          <Txt variant="label">{unit}</Txt>
+        </View>
+        {btn('add', 1, `Increase ${unit}`)}
       </View>
-      {btn('add', step, `Increase ${unit}`)}
+      <Txt variant="caption" style={{ textAlign: 'center' }}>
+        {min}–{max} · hold to run, tap the number to type
+      </Txt>
     </View>
   );
 }
@@ -668,6 +743,7 @@ export function Sheet({ visible, onClose, children, title }: { visible: boolean;
   const retro = pack.chrome === 'bevel';
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
       <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' }} onPress={onClose} accessibilityLabel="Close" />
       <Animated.View
         style={[
@@ -695,6 +771,7 @@ export function Sheet({ visible, onClose, children, title }: { visible: boolean;
           {children}
         </View>
       </Animated.View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

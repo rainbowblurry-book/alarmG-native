@@ -10,13 +10,16 @@ import type { AlarmState } from '../../modules/clockguard-alarm';
  * foreground. Movement progress is UI-only and resets on every new ring.
  */
 
-const BASE_SNOOZE_SECONDS = 300; // 5 minutes
 const MIN_SNOOZE_SECONDS = 20; // cruelty-mode floor
 
-/** Length of the NEXT snooze. Cruelty mode halves it after every snooze, floor 20 s. */
-export function snoozeDurationSeconds(snoozeCount: number, crueltyModeEnabled: boolean): number {
-  if (!crueltyModeEnabled) return BASE_SNOOZE_SECONDS;
-  return Math.max(MIN_SNOOZE_SECONDS, Math.floor(BASE_SNOOZE_SECONDS / 2 ** snoozeCount));
+/**
+ * Length of the NEXT snooze. Base = the user's snooze length (1-20 min, default 5).
+ * Cruelty mode halves it after every snooze, floor 20 s.
+ */
+export function snoozeDurationSeconds(snoozeCount: number, crueltyModeEnabled: boolean, snoozeMinutes = 5): number {
+  const base = Math.min(20, Math.max(1, Math.round(snoozeMinutes))) * 60;
+  if (!crueltyModeEnabled) return base;
+  return Math.max(MIN_SNOOZE_SECONDS, Math.floor(base / 2 ** snoozeCount));
 }
 
 type WakeFlowContextType = {

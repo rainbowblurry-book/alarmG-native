@@ -68,8 +68,19 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<RootSt
     else setSheetOpen(true);
   };
 
+  // Tap the numbers → type the time; tap elsewhere on the card → the design's picker.
+  const [typeFirst, setTypeFirst] = useState(false);
   const openTime = () => {
-    if (!armed && !wasJustDragged()) setSheetOpen(true);
+    if (!armed && !wasJustDragged()) {
+      setTypeFirst(false);
+      setSheetOpen(true);
+    }
+  };
+  const openTyping = () => {
+    if (!armed) {
+      setTypeFirst(true);
+      setSheetOpen(true);
+    }
   };
 
   const retro = pack.chrome === 'bevel';
@@ -98,7 +109,7 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<RootSt
       </View>
 
       <View style={{ flex: 1, justifyContent: 'center', minHeight: 260 }}>
-        <Hero pack={pack} hour={settings.alarmHour} minute={settings.alarmMinute} onTimeChange={(h, m) => updateSettings({ alarmHour: h, alarmMinute: m })} time={timeText} days={daysText} inText={inText} armed={armed} repeatDays={settings.repeatDays} onPress={openTime} />
+        <Hero pack={pack} hour={settings.alarmHour} minute={settings.alarmMinute} onTimeChange={(h, m) => updateSettings({ alarmHour: h, alarmMinute: m })} time={timeText} days={daysText} inText={inText} armed={armed} repeatDays={settings.repeatDays} onPress={openTime} onTapNumbers={openTyping} />
       </View>
 
 
@@ -163,7 +174,7 @@ export default function HomeScreen({ navigation }: NativeStackScreenProps<RootSt
         )}
       </View>
 
-      <TimeSheet visible={sheetOpen} onClose={() => setSheetOpen(false)} />
+      <TimeSheet visible={sheetOpen} startTyping={typeFirst} onClose={() => setSheetOpen(false)} />
     </Screen>
   );
 }
@@ -179,7 +190,9 @@ function Hero({
   hour,
   minute,
   onTimeChange,
+  onTapNumbers,
 }: {
+  onTapNumbers: () => void;
   pack: DesignPack;
   hour: number;
   minute: number;
@@ -208,7 +221,7 @@ function Hero({
       minute={minute}
       locked={armed}
       onChange={onTimeChange}
-      onTap={onPress}
+      onTap={onTapNumbers}
       activeColor={pack.id === 'signal' ? '#FFD36A' : c.accent}
       style={{ fontFamily: pack.fonts.display, fontSize: size, lineHeight: size * 1.08, color, fontVariant: ['tabular-nums'], letterSpacing: pack.chrome === 'sketch' ? 0 : pack.id === 'lumen' ? -2 : -1 }}
     />
