@@ -1,38 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, Modal } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Modal, BackHandler, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Accelerometer } from 'expo-sensors';
-import { useAudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { useSettings } from '../context/SettingsContext';
-import { useWakeFlow } from '../context/WakeFlowContext';
+import { useWakeFlow, snoozeDurationSeconds } from '../context/WakeFlowContext';
 import { useTheme } from '../context/ThemeContext';
 import { ThemeConfig, SEMANTIC_COLORS } from '../theme/themes';
 
-const SHAPE = { md: 12, lg: 16, xl: 28, full: 999 };
-
+/**
+ * Shown whenever the native engine is ringing or snoozed. Sound, vibration,
+ * volume, wake-up and lock-screen display are all handled natively
+ * (modules/clockguard-alarm), so closing or hiding this screen never silences
+ * the alarm. This screen only runs the mission and then calls disarm()/snooze().
+ */
 export default function RingingScreen() {
   const insets = useSafeAreaInsets();
   const { settings } = useSettings();
   const { theme } = useTheme();
-  const {
-    wakeFlow,
-    incrementMovement,
-    dismissWake,
-    exitPreview,
-    startSnooze,
-    decrementSnooze,
-    returnToRingingFromSnooze,
-  } = useWakeFlow();
+  const { alarm, movementProgress, incrementMovement, snooze, disarm, stopTestRing } = useWakeFlow();
 
   const styles = createStyles(theme);
-  const isGlass = Boolean(theme.glassEffect);
+  const isRinging = alarm.state === 'ringing';
 
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [now, setNow] = useState(() => Date.now());
   const [sensorAvailable, setSensorAvailable] = useState(true);
 
   const [permission, requestPermission] = useCameraPermissions();
@@ -46,140 +40,87 @@ export default function RingingScreen() {
 
   const lastAccelRef = useRef<{ x: number; y: number; z: number } | null>(null);
   const lastMovementTimeRef = useRef<number>(0);
-  const progressRef = useRef(wakeFlow.movementProgress);
+  const progressRef = useRef(movementProgress);
+  progressRef.current = movementProgress;
 
-  const player = useAudioPlayer(
-    settings.customToneUri ? { uri: settings.customToneUri } : require('../../assets/alarm-tone.mp3')
-  );
-
+  // Clock + snooze countdown tick.
   useEffect(() => {
-    progressRef.current = wakeFlow.movementProgress;
-  }, [wakeFlow.movementProgress]);
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
 
+  // Back gesture must not escape a ringing alarm.
   useEffect(() => {
-    try {
-      if (wakeFlow.status === 'ringing') {
-        player.loop = true;
-        player.seekTo(0);
-        player.play();
-      } else {
-        player.pause();
-      }
-    } catch (error) {
-      // Player may already be released if the screen is unmounting. Safe to ignore.
+    if (!isRinging) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, [isRinging]);
+
+  // A ringing alarm can't be snoozed from an open keypad that was left over from before.
+  useEffect(() => {
+    if (!isRinging) {
+      setIsKeypadOpen(false);
+      setEnteredPin('');
     }
-  }, [wakeFlow.status]);
+  }, [isRinging]);
+
+  const isMovementComplete = !settings.movementEnabled || movementProgress >= settings.movementTarget;
 
   useEffect(() => {
-    if (wakeFlow.status !== 'ringing') return;
-
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-
-    const interval = setInterval(() => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    }, 2800);
-
-    return () => clearInterval(interval);
-  }, [wakeFlow.status]);
-
-  const isMovementComplete = !settings.movementEnabled || wakeFlow.movementProgress >= settings.movementTarget;
-
-  useEffect(() => {
+    if (!isRinging || !settings.movementEnabled) return;
     let subscription: { remove: () => void } | null = null;
     let isActive = true;
 
-    if (wakeFlow.status !== 'ringing' || !settings.movementEnabled) {
-      return;
-    }
-
-    const setup = async () => {
+    (async () => {
       const available = await Accelerometer.isAvailableAsync();
       if (!isActive) return;
       setSensorAvailable(available);
       if (!available) return;
 
       Accelerometer.setUpdateInterval(120);
-      subscription = Accelerometer.addListener((data: { x: number; y: number; z: number }) => {
-        const { x, y, z } = data;
+      subscription = Accelerometer.addListener(({ x, y, z }) => {
         const last = lastAccelRef.current;
-
         if (last) {
           const delta = Math.abs(x - last.x) + Math.abs(y - last.y) + Math.abs(z - last.z);
-          const now = Date.now();
-
-          if (delta > 0.7 && now - lastMovementTimeRef.current > 200 && progressRef.current < settings.movementTarget) {
-            lastMovementTimeRef.current = now;
+          const t = Date.now();
+          if (delta > 0.7 && t - lastMovementTimeRef.current > 200 && progressRef.current < settings.movementTarget) {
+            lastMovementTimeRef.current = t;
             incrementMovement(settings.movementTarget);
           }
         }
-
         lastAccelRef.current = { x, y, z };
       });
-    };
-
-    setup();
+    })();
 
     return () => {
       isActive = false;
-      if (subscription) {
-        subscription.remove();
-      }
+      subscription?.remove();
     };
-  }, [wakeFlow.status, settings.movementEnabled, settings.movementTarget]);
-
-  useEffect(() => {
-    if (wakeFlow.status !== 'snoozed') return;
-
-    const timer = setInterval(() => {
-      decrementSnooze();
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [wakeFlow.status]);
-
-  useEffect(() => {
-    if (wakeFlow.status === 'snoozed' && wakeFlow.snoozeSecondsRemaining === 0) {
-      returnToRingingFromSnooze();
-    }
-  }, [wakeFlow.status, wakeFlow.snoozeSecondsRemaining]);
+  }, [isRinging, settings.movementEnabled, settings.movementTarget]);
 
   const handleOpenDisarmScanner = async () => {
-    if (wakeFlow.status === 'ringing' && !isMovementComplete) return;
-
+    if (isRinging && !isMovementComplete) return;
     scanLockRef.current = false;
     setWrongBarcodeMessage(null);
-
     if (!permission?.granted) {
-      const result = await requestPermission();
-      if (!result.granted) {
-        setIsScannerOpen(true);
-        return;
-      }
+      await requestPermission();
     }
-
     setIsScannerOpen(true);
   };
 
   const handleDisarmBarcodeScanned = (result: { data: string }) => {
     if (scanLockRef.current) return;
-
     const scanned = result.data.trim();
     if (!scanned) return;
 
-    if (scanned === settings.wakeBarcode) {
-      scanLockRef.current = true;
+    scanLockRef.current = true;
+    if (settings.wakeBarcode && scanned === settings.wakeBarcode) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setIsScannerOpen(false);
-      dismissWake();
+      disarm();
       return;
     }
 
-    scanLockRef.current = true;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     setWrongBarcodeMessage(`Wrong item. Scan your ${settings.wakeItemName || 'registered wake-up item'}.`);
     setTimeout(() => {
@@ -199,13 +140,16 @@ export default function RingingScreen() {
     setPinError(false);
   };
 
+  const nextSnoozeSeconds = snoozeDurationSeconds(alarm.snoozeCount, settings.crueltyModeEnabled);
+
   const handleConfirmPin = () => {
-    if (enteredPin === settings.snoozePin) {
+    if (settings.snoozePin && enteredPin === settings.snoozePin) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setEnteredPin('');
       setPinError(false);
       setIsKeypadOpen(false);
-      startSnooze();
+      const error = snooze(nextSnoozeSeconds);
+      if (error) Alert.alert('Not snoozed', error);
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setPinError(true);
@@ -213,25 +157,27 @@ export default function RingingScreen() {
     }
   };
 
-  const timeFormatted = currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-  const minutes = Math.floor(wakeFlow.snoozeSecondsRemaining / 60);
-  const seconds = wakeFlow.snoozeSecondsRemaining % 60;
-  const snoozeTimeFormatted = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-
-  const nextSnoozeSeconds = settings.crueltyModeEnabled && wakeFlow.snoozeCount > 0
-    ? Math.max(20, Math.floor(wakeFlow.currentSnoozeDurationSeconds / 2))
-    : wakeFlow.currentSnoozeDurationSeconds;
+  const timeFormatted = new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  const snoozeLeft = Math.max(0, Math.round((alarm.snoozeUntil - now) / 1000));
+  const snoozeTimeFormatted = `${String(Math.floor(snoozeLeft / 60)).padStart(2, '0')}:${String(snoozeLeft % 60).padStart(2, '0')}`;
 
   return (
     <LinearGradient colors={theme.ringingGradient} style={styles.gradientContainer}>
       <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        {wakeFlow.status === 'ringing' ? (
+        {/* TESTING-ONLY START: test ring banner + exit (only ever stops a TEST ring) */}
+        {alarm.isTestRing && (
+          <View style={styles.testBanner}>
+            <Text style={styles.testBannerText}>TEST alarm. Your real alarm is not affected.</Text>
+            <Pressable onPress={stopTestRing} accessibilityLabel="Exit test alarm" style={styles.testExitButton}>
+              <Text style={styles.testExitText}>Exit test</Text>
+            </Pressable>
+          </View>
+        )}
+        {/* TESTING-ONLY END */}
+        {isRinging ? (
           <>
             <View style={styles.topSection}>
-              <View style={[styles.statusPill, isGlass && styles.statusPillTransparent]}>
-                {isGlass && (
-                  <BlurView intensity={60} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
-                )}
+              <View style={styles.statusPill}>
                 <View style={styles.statusDot} />
                 <Text style={styles.statusPillText}>Alarm active</Text>
               </View>
@@ -244,10 +190,7 @@ export default function RingingScreen() {
 
             <View style={styles.middleSection}>
               {settings.movementEnabled && (
-                <View style={[styles.card, isGlass && styles.cardTransparent]}>
-                  {isGlass && (
-                    <BlurView intensity={60} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
-                  )}
+                <View style={styles.card}>
                   <View style={styles.cardHeaderRow}>
                     <View style={[styles.iconBadge, { backgroundColor: `${theme.accent}30` }]}>
                       <Ionicons name="walk" size={16} color={theme.accent} />
@@ -258,13 +201,13 @@ export default function RingingScreen() {
                   {sensorAvailable ? (
                     <>
                       <Text style={styles.cardSubtitle}>
-                        {wakeFlow.movementProgress} / {settings.movementTarget} steps
+                        {movementProgress} / {settings.movementTarget} movements
                       </Text>
                       <View style={styles.progressTrack}>
                         <View
                           style={[
                             styles.progressFill,
-                            { width: `${Math.min(100, (wakeFlow.movementProgress / settings.movementTarget) * 100)}%` },
+                            { width: `${Math.min(100, (movementProgress / settings.movementTarget) * 100)}%` },
                           ]}
                         />
                       </View>
@@ -275,10 +218,10 @@ export default function RingingScreen() {
                       <Pressable
                         style={styles.fallbackButton}
                         onPress={() => incrementMovement(settings.movementTarget)}
-                        accessibilityLabel="Simulate movement, sensor unavailable"
+                        accessibilityLabel="Count movement, sensor unavailable"
                       >
                         <Text style={styles.fallbackButtonText}>
-                          Tap to simulate movement ({wakeFlow.movementProgress}/{settings.movementTarget})
+                          Tap to count movement ({movementProgress}/{settings.movementTarget})
                         </Text>
                       </Pressable>
                     </>
@@ -298,75 +241,50 @@ export default function RingingScreen() {
               <Pressable
                 style={({ pressed }) => [
                   styles.scanButton,
-                  !isGlass && { backgroundColor: theme.accent },
+                  { backgroundColor: theme.accent },
                   !isMovementComplete && styles.scanButtonDisabled,
                   pressed && isMovementComplete && styles.pressed,
                 ]}
                 onPress={handleOpenDisarmScanner}
                 disabled={!isMovementComplete}
-                accessibilityLabel="Scan to Disarm"
+                accessibilityLabel="Scan to disarm"
               >
-                {isGlass && isMovementComplete && (
-                  <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFill} />
-                )}
                 <Ionicons name="scan" size={18} color={theme.accentText} />
                 <Text style={styles.scanButtonText}>
                   {isMovementComplete ? 'Scan to disarm' : 'Complete movement first'}
                 </Text>
               </Pressable>
 
-              <Pressable
-                style={({ pressed }) => [
-                  styles.snoozeButton,
-                  isGlass && styles.snoozeButtonTransparent,
-                  pressed && styles.pressed,
-                ]}
-                onPress={() => setIsKeypadOpen(true)}
-                accessibilityLabel="Snooze with PIN"
-              >
-                {isGlass && (
-                  <BlurView intensity={60} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
-                )}
-                <Ionicons name="moon-outline" size={16} color={theme.accent} />
-                <Text style={styles.snoozeButtonText}>Snooze with PIN</Text>
-              </Pressable>
+              {settings.snoozePin.length === 10 && (
+                <Pressable
+                  style={({ pressed }) => [styles.snoozeButton, pressed && styles.pressed]}
+                  onPress={() => setIsKeypadOpen(true)}
+                  accessibilityLabel="Snooze with PIN"
+                >
+                  <Ionicons name="moon-outline" size={16} color={theme.accent} />
+                  <Text style={styles.snoozeButtonText}>Snooze with PIN ({nextSnoozeSeconds % 60 === 0 ? `${nextSnoozeSeconds / 60} min` : `${nextSnoozeSeconds}s`})</Text>
+                </Pressable>
+              )}
 
               {settings.crueltyModeEnabled && (
                 <View style={styles.crueltyHint}>
-                  <Text style={styles.crueltyHintText}>
-                    Cruelty mode is on - next snooze will be {nextSnoozeSeconds}s
-                  </Text>
+                  <Text style={styles.crueltyHintText}>Cruelty mode is on: each snooze is half as long</Text>
                 </View>
-              )}
-
-              {settings.devUnlocked && (
-                <Pressable
-                  style={styles.exitPreviewButton}
-                  onPress={exitPreview}
-                  accessibilityLabel="Exit preview, testing only"
-                >
-                  <Text style={styles.exitPreviewButtonText}>Exit Preview (Testing Only)</Text>
-                </Pressable>
               )}
             </View>
           </>
         ) : (
           <>
             <View style={styles.topSection}>
-              <View style={[styles.statusPill, styles.statusPillSnooze, isGlass && styles.statusPillTransparent]}>
-                {isGlass && (
-                  <BlurView intensity={60} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
-                )}
+              <View style={[styles.statusPill, styles.statusPillSnooze]}>
                 <Ionicons name="moon" size={13} color={theme.accent} />
-                <Text style={styles.statusPillText}>Snoozed - #{wakeFlow.snoozeCount}</Text>
+                <Text style={styles.statusPillText}>Snoozed · #{alarm.snoozeCount}</Text>
               </View>
               <Text style={styles.snoozeCountdownText}>{snoozeTimeFormatted}</Text>
               <Text style={styles.subText}>Alarm will ring again in</Text>
               {settings.crueltyModeEnabled && (
                 <View style={styles.crueltyHint}>
-                  <Text style={styles.crueltyHintText}>
-                    Next snooze will be shorter: {nextSnoozeSeconds}s
-                  </Text>
+                  <Text style={styles.crueltyHintText}>Next snooze will be {nextSnoozeSeconds}s</Text>
                 </View>
               )}
             </View>
@@ -382,17 +300,10 @@ export default function RingingScreen() {
 
             <View style={styles.bottomSection}>
               <Pressable
-                style={({ pressed }) => [
-                  styles.scanButton,
-                  !isGlass && { backgroundColor: theme.accent },
-                  pressed && styles.pressed,
-                ]}
+                style={({ pressed }) => [styles.scanButton, { backgroundColor: theme.accent }, pressed && styles.pressed]}
                 onPress={handleOpenDisarmScanner}
-                accessibilityLabel="Scan to Disarm Now"
+                accessibilityLabel="Scan to disarm now"
               >
-                {isGlass && (
-                  <LinearGradient colors={theme.buttonGradient} style={StyleSheet.absoluteFill} />
-                )}
                 <Ionicons name="scan" size={18} color={theme.accentText} />
                 <Text style={styles.scanButtonText}>Scan to disarm now</Text>
               </Pressable>
@@ -409,15 +320,13 @@ export default function RingingScreen() {
           <View style={[styles.modalContainer, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
             {!permission?.granted ? (
               <View style={styles.permissionContainer}>
-                <Text style={styles.permissionTitle}>Camera Permission Required</Text>
+                <Text style={styles.permissionTitle}>Camera permission required</Text>
                 <Text style={styles.permissionText}>Camera access is needed to scan your wake-up item.</Text>
-
                 <View style={styles.modalFooter}>
-                  <Pressable
-                    style={styles.cancelButton}
-                    onPress={() => setIsScannerOpen(false)}
-                    accessibilityLabel="Cancel barcode scanning"
-                  >
+                  <Pressable style={styles.cancelButton} onPress={() => requestPermission()} accessibilityLabel="Allow camera">
+                    <Text style={[styles.cancelButtonText, { color: theme.accent }]}>Allow camera</Text>
+                  </Pressable>
+                  <Pressable style={styles.cancelButton} onPress={() => setIsScannerOpen(false)} accessibilityLabel="Cancel barcode scanning">
                     <Text style={styles.cancelButtonText}>Cancel</Text>
                   </Pressable>
                 </View>
@@ -432,19 +341,13 @@ export default function RingingScreen() {
                   }}
                   onBarcodeScanned={handleDisarmBarcodeScanned}
                 />
-
                 <View style={styles.cameraOverlay} pointerEvents="box-none">
                   <View style={styles.cameraHeaderBox}>
-                    <Text style={styles.cameraHeaderText}>Scan {settings.wakeItemName}</Text>
+                    <Text style={styles.cameraHeaderText}>Scan {settings.wakeItemName || 'your item'}</Text>
                     <Text style={styles.cameraSubHeaderText}>Position the barcode in the center</Text>
                   </View>
-
                   <View style={styles.cameraFooter}>
-                    <Pressable
-                      style={styles.cancelButton}
-                      onPress={() => setIsScannerOpen(false)}
-                      accessibilityLabel="Cancel barcode scanning"
-                    >
+                    <Pressable style={styles.cancelButton} onPress={() => setIsScannerOpen(false)} accessibilityLabel="Cancel barcode scanning">
                       <Text style={styles.cancelButtonText}>Cancel</Text>
                     </Pressable>
                   </View>
@@ -455,20 +358,17 @@ export default function RingingScreen() {
         </Modal>
 
         <Modal
-          visible={isKeypadOpen}
+          visible={isKeypadOpen && isRinging}
           animationType="fade"
           transparent={true}
           onRequestClose={() => setIsKeypadOpen(false)}
         >
           <View style={styles.keypadOverlay}>
-            <View style={[styles.keypadContainer, isGlass && styles.keypadContainerTransparent]}>
-              {isGlass && (
-                <BlurView intensity={70} tint="dark" experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
-              )}
+            <View style={styles.keypadContainer}>
               <Text style={styles.keypadTitle}>Snooze PIN</Text>
 
               <View style={[styles.pinDisplay, pinError && styles.pinDisplayError]}>
-                <Text style={styles.pinDisplayText}>{enteredPin.padEnd(10, '.')}</Text>
+                <Text style={styles.pinDisplayText}>{'•'.repeat(enteredPin.length).padEnd(10, '·')}</Text>
               </View>
 
               {pinError && <Text style={styles.pinErrorText}>Incorrect PIN. Please try again.</Text>}
@@ -533,7 +433,6 @@ function createStyles(theme: ThemeConfig) {
       flexDirection: 'row', alignItems: 'center', gap: 6,
       backgroundColor: cardBg, paddingHorizontal: 16, paddingVertical: 7, borderRadius: 999, marginBottom: 16, overflow: 'hidden',
     },
-    statusPillTransparent: { backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
     statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: SEMANTIC_COLORS.success },
     statusPillSnooze: { borderWidth: 1, borderColor: theme.accent },
     statusPillText: { color: theme.text, fontWeight: '700', fontSize: 13 },
@@ -547,7 +446,6 @@ function createStyles(theme: ThemeConfig) {
 
     middleSection: { flex: 1, justifyContent: 'center', gap: 16 },
     card: { backgroundColor: cardBg, borderRadius: SHAPE_XL, padding: 20, overflow: 'hidden' },
-    cardTransparent: { backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
     cardHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 10 },
     iconBadge: { width: 28, height: 28, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
     cardTitle: { color: theme.text, fontSize: 15, fontWeight: '800', fontFamily: theme.fontFamily },
@@ -563,10 +461,7 @@ function createStyles(theme: ThemeConfig) {
     scanButtonDisabled: { backgroundColor: '#333333', opacity: 0.7 },
     scanButtonText: { color: theme.accentText, fontSize: 16, fontWeight: '800' },
     snoozeButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: cardBg, borderRadius: 999, paddingVertical: 14, overflow: 'hidden' },
-    snoozeButtonTransparent: { backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
     snoozeButtonText: { color: theme.accent, fontWeight: '700' },
-    exitPreviewButton: { paddingVertical: 10, alignItems: 'center' },
-    exitPreviewButtonText: { color: theme.textSecondary, fontSize: 12 },
 
     modalContainer: { flex: 1, backgroundColor: theme.background },
     permissionContainer: { flex: 1, padding: 24, justifyContent: 'center' },
@@ -585,7 +480,6 @@ function createStyles(theme: ThemeConfig) {
 
     keypadOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', padding: 24 },
     keypadContainer: { backgroundColor: theme.card, borderRadius: SHAPE_XL, padding: 24, overflow: 'hidden' },
-    keypadContainerTransparent: { backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
     keypadTitle: { color: theme.accent, fontWeight: '800', fontSize: 14, textAlign: 'center', marginBottom: 12, textTransform: 'uppercase' },
     pinDisplay: { backgroundColor: '#000', borderRadius: 14, paddingVertical: 12, marginBottom: 8 },
     pinDisplayError: { borderColor: SEMANTIC_COLORS.error, borderWidth: 1 },
@@ -603,5 +497,14 @@ function createStyles(theme: ThemeConfig) {
     keypadCancelText: { color: theme.textSecondary, fontSize: 14, fontWeight: '700' },
 
     pressed: { opacity: 0.8 },
+    // TESTING-ONLY START
+    testBanner: {
+      flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8, padding: 10,
+      borderRadius: 12, borderWidth: 1, borderColor: SEMANTIC_COLORS.warning, backgroundColor: 'rgba(0,0,0,0.35)',
+    },
+    testBannerText: { flex: 1, color: SEMANTIC_COLORS.warning, fontWeight: '700', fontSize: 12 },
+    testExitButton: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: SEMANTIC_COLORS.warning },
+    testExitText: { color: '#000', fontWeight: '800', fontSize: 12 },
+    // TESTING-ONLY END
   });
 }

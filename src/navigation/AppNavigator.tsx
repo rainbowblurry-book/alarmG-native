@@ -5,13 +5,13 @@ import AlarmScreen from '../screens/AlarmScreen';
 import SetupScreen from '../screens/SetupScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import { useTheme } from '../context/ThemeContext';
-import { useSettings } from '../context/SettingsContext';
+import { useWakeFlow } from '../context/WakeFlowContext';
 
 const Tab = createBottomTabNavigator();
 
 export default function AppNavigator() {
   const { theme } = useTheme();
-  const { settings } = useSettings();
+  const { alarm } = useWakeFlow();
 
   return (
     <Tab.Navigator
@@ -48,19 +48,12 @@ export default function AppNavigator() {
         component={SetupScreen}
         listeners={{
           tabPress: (e) => {
-            if (settings.isArmed) e.preventDefault();
+            if (alarm.armed) e.preventDefault();
           },
         }}
       />
-      <Tab.Screen
-        name="Settings"
-        component={SettingsScreen}
-        listeners={{
-          tabPress: (e) => {
-            if (settings.isArmed) e.preventDefault();
-          },
-        }}
-      />
+      {/* Settings stays reachable while armed (test alarm, permissions, volume); Reset is disabled there. */}
+      <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );
 }

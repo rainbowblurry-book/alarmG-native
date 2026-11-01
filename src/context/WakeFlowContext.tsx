@@ -1,166 +1,154 @@
-import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
-import { useSettings } from './SettingsContext';
-import { setLockScreenBypassEnabled } from '../native/lockScreenBypass';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from 'react';
+import { AppState } from 'react-native';
+import * as Alarm from '../../modules/clockguard-alarm';
+import type { AlarmState } from '../../modules/clockguard-alarm';
 
-
-export type WakeFlowStatus = 'idle' | 'ringing' | 'snoozed';
-
+/**
+ * Mirrors the native alarm engine's state (modules/clockguard-alarm) into React.
+ * Native is the source of truth for armed/ringing/snoozed; this only re-reads it
+ * on start, on every native change event, and whenever the app comes to the
+ * foreground. Movement progress is UI-only and resets on every new ring.
+ */
 
 const BASE_SNOOZE_SECONDS = 300; // 5 minutes
-const MIN_SNOOZE_SECONDS = 20; // cruelty mode floor, mirrors the original web app's spec
+const MIN_SNOOZE_SECONDS = 20; // cruelty-mode floor
 
-
-export type WakeFlowState = {
-  status: WakeFlowStatus;
-  movementProgress: number;
-  snoozeSecondsRemaining: number;
-  snoozeCount: number;
-  currentSnoozeDurationSeconds: number;
-};
-
-
-const DEFAULT_WAKE_FLOW: WakeFlowState = {
-  status: 'idle',
-  movementProgress: 0,
-  snoozeSecondsRemaining: 0,
-  snoozeCount: 0,
-  currentSnoozeDurationSeconds: BASE_SNOOZE_SECONDS,
-};
-
+/** Length of the NEXT snooze. Cruelty mode halves it after every snooze, floor 20 s. */
+export function snoozeDurationSeconds(snoozeCount: number, crueltyModeEnabled: boolean): number {
+  if (!crueltyModeEnabled) return BASE_SNOOZE_SECONDS;
+  return Math.max(MIN_SNOOZE_SECONDS, Math.floor(BASE_SNOOZE_SECONDS / 2 ** snoozeCount));
+}
 
 type WakeFlowContextType = {
-  wakeFlow: WakeFlowState;
-  startPreview: () => void;
-  dismissWake: () => void;
-  exitPreview: () => void;
+  alarm: AlarmState;
+  movementProgress: number;
   incrementMovement: (max: number) => void;
-  startSnooze: () => void;
-  decrementSnooze: () => void;
-  returnToRingingFromSnooze: () => void;
+  /** Returns null on success, or a plain-language reason why the alarm was NOT armed. */
+  arm: (hour: number, minute: number, days: number[]) => string | null;
+  cancelAlarm: () => void;
+  /** Returns null on success, or why the snooze failed (the alarm keeps ringing). */
+  snooze: (seconds: number) => string | null;
+  disarm: () => void;
+  refresh: () => void;
+  // TESTING-ONLY START
+  scheduleTestRing: (delaySeconds: number) => string | null;
+  cancelTestRing: () => void;
+  stopTestRing: () => void;
+  // TESTING-ONLY END
 };
-
 
 const WakeFlowContext = createContext<WakeFlowContextType | undefined>(undefined);
 
-
 export function WakeFlowProvider({ children }: { children: ReactNode }) {
-  const { settings, updateSettings } = useSettings();
-  const [wakeFlow, setWakeFlow] = useState<WakeFlowState>(DEFAULT_WAKE_FLOW);
-  const isFirstBypassSyncRef = useRef(true);
+  const [alarm, setAlarm] = useState<AlarmState>(() => Alarm.getState());
+  const [movementProgress, setMovementProgress] = useState(0);
+  const lastRingStartRef = useRef(alarm.ringStartedAt);
 
-  // LockScreenBypass sync: ON only while ringing/snoozed, OFF otherwise.
-  // The first 'idle' run on mount is skipped on purpose: when the native alarm
-  // auto-launches the app, MainActivity has already turned the bypass ON
-  // (AlarmLaunchHelper) before JS loads; turning it OFF here would drop the app
-  // behind the lock screen for a moment before ringing starts.
+  const refresh = useCallback(() => setAlarm(Alarm.getState()), []);
+
   useEffect(() => {
-    if (isFirstBypassSyncRef.current) {
-      isFirstBypassSyncRef.current = false;
-      if (wakeFlow.status === 'idle') return;
+    const sub = Alarm.addStateListener(setAlarm);
+    const appSub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') refresh();
+    });
+    refresh();
+    return () => {
+      sub.remove();
+      appSub.remove();
+    };
+  }, [refresh]);
+
+  // A new ring (fresh or after a snooze) restarts the movement mission.
+  useEffect(() => {
+    if (alarm.state === 'ringing' && alarm.ringStartedAt !== lastRingStartRef.current) {
+      setMovementProgress(0);
     }
-    setLockScreenBypassEnabled(wakeFlow.status !== 'idle');
-  }, [wakeFlow.status]);
+    lastRingStartRef.current = alarm.ringStartedAt;
+  }, [alarm.state, alarm.ringStartedAt]);
 
+  const incrementMovement = useCallback((max: number) => {
+    setMovementProgress((p) => Math.min(p + 1, max));
+  }, []);
 
-  const startPreview = () => {
-    setWakeFlow({
-      status: 'ringing',
-      movementProgress: 0,
-      snoozeSecondsRemaining: 0,
-      snoozeCount: 0,
-      currentSnoozeDurationSeconds: BASE_SNOOZE_SECONDS,
-    });
-  };
+  const arm = useCallback((hour: number, minute: number, days: number[]) => {
+    try {
+      Alarm.arm(hour, minute, days);
+      return null;
+    } catch (e) {
+      return Alarm.describeEngineError(e);
+    } finally {
+      refresh();
+    }
+  }, [refresh]);
 
+  const cancelAlarm = useCallback(() => {
+    Alarm.cancel();
+    refresh();
+  }, [refresh]);
 
-  // Real disarm (correct barcode): back to idle AND back to "ready to arm".
-  // Setting isArmed=false makes App.tsx cancel the native alarm, so the user
-  // arms again each night, like a one-shot alarm.
-  const dismissWake = () => {
-    setWakeFlow(DEFAULT_WAKE_FLOW);
-    updateSettings({ isArmed: false });
-  };
+  const snooze = useCallback((seconds: number) => {
+    try {
+      Alarm.snooze(seconds);
+      return null;
+    } catch (e) {
+      return Alarm.describeEngineError(e);
+    } finally {
+      refresh();
+    }
+  }, [refresh]);
 
+  const disarm = useCallback(() => {
+    Alarm.disarm();
+    setMovementProgress(0);
+    refresh();
+  }, [refresh]);
 
-  // Dev-only "Exit Preview (Testing Only)": back to idle WITHOUT touching
-  // isArmed, so a real armed alarm stays scheduled and still rings on time.
-  const exitPreview = () => {
-    setWakeFlow(DEFAULT_WAKE_FLOW);
-  };
+  // TESTING-ONLY START
+  const scheduleTestRing = useCallback((delaySeconds: number) => {
+    try {
+      Alarm.scheduleTestRing(delaySeconds);
+      return null;
+    } catch (e) {
+      return Alarm.describeEngineError(e);
+    } finally {
+      refresh();
+    }
+  }, [refresh]);
 
+  const cancelTestRing = useCallback(() => {
+    Alarm.cancelTestRing();
+    refresh();
+  }, [refresh]);
 
-  const incrementMovement = (max: number) => {
-    setWakeFlow((prev) => ({
-      ...prev,
-      movementProgress: Math.min(prev.movementProgress + 1, max),
-    }));
-  };
-
-
-  // Cruelty mode: every successive snooze halves the previous duration
-  // (floor MIN_SNOOZE_SECONDS). Off (default): always BASE_SNOOZE_SECONDS.
-  const startSnooze = () => {
-    setWakeFlow((prev) => {
-      const nextCount = prev.snoozeCount + 1;
-      let duration = BASE_SNOOZE_SECONDS;
-
-      if (settings.crueltyModeEnabled && prev.snoozeCount > 0) {
-        duration = Math.max(MIN_SNOOZE_SECONDS, Math.floor(prev.currentSnoozeDurationSeconds / 2));
-      }
-
-      return {
-        ...prev,
-        status: 'snoozed',
-        snoozeCount: nextCount,
-        currentSnoozeDurationSeconds: duration,
-        snoozeSecondsRemaining: duration,
-      };
-    });
-  };
-
-
-  const decrementSnooze = () => {
-    setWakeFlow((prev) => {
-      if (prev.status !== 'snoozed') {
-        return prev;
-      }
-      const next = Math.max(0, prev.snoozeSecondsRemaining - 1);
-      return {
-        ...prev,
-        snoozeSecondsRemaining: next,
-      };
-    });
-  };
-
-
-  const returnToRingingFromSnooze = () => {
-    setWakeFlow((prev) => ({
-      ...prev,
-      status: 'ringing',
-      movementProgress: 0,
-      snoozeSecondsRemaining: 0,
-    }));
-  };
-
+  const stopTestRing = useCallback(() => {
+    Alarm.stopTestRing();
+    setMovementProgress(0);
+    refresh();
+  }, [refresh]);
+  // TESTING-ONLY END
 
   return (
     <WakeFlowContext.Provider
       value={{
-        wakeFlow,
-        startPreview,
-        dismissWake,
-        exitPreview,
+        alarm,
+        movementProgress,
         incrementMovement,
-        startSnooze,
-        decrementSnooze,
-        returnToRingingFromSnooze,
+        arm,
+        cancelAlarm,
+        snooze,
+        disarm,
+        refresh,
+        // TESTING-ONLY START
+        scheduleTestRing,
+        cancelTestRing,
+        stopTestRing,
+        // TESTING-ONLY END
       }}
     >
       {children}
     </WakeFlowContext.Provider>
   );
 }
-
 
 export function useWakeFlow() {
   const context = useContext(WakeFlowContext);

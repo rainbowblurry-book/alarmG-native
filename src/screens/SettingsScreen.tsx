@@ -1,22 +1,41 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Switch, TextInput } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, Modal, AppState, Switch, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSettings } from '../context/SettingsContext';
+import { useWakeFlow } from '../context/WakeFlowContext';
 import { useTheme } from '../context/ThemeContext';
 import { ThemeConfig, SEMANTIC_COLORS } from '../theme/themes';
-import AppearanceMediaCard from '../components/AppearanceMediaCard';
+import * as Alarm from '../../modules/clockguard-alarm';
+import type { AlarmPermissions, SettingsPage } from '../../modules/clockguard-alarm';
 
 const SHAPE = { md: 12, lg: 16, xl: 28, full: 999 };
+
+const PERMISSION_ROWS: { key: keyof AlarmPermissions; label: string; hint: string; page: SettingsPage }[] = [
+  { key: 'notifications', label: 'Notifications', hint: 'Needed for the ringing screen to appear', page: 'notifications' },
+  { key: 'exactAlarms', label: 'Alarms & reminders', hint: 'Rings at the exact minute', page: 'exactAlarms' },
+  { key: 'fullScreen', label: 'Full-screen alarm', hint: 'Opens over the lock screen by itself', page: 'fullScreen' },
+  { key: 'batteryUnrestricted', label: 'Battery: Unrestricted', hint: 'App info → Battery → Unrestricted', page: 'app' },
+];
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { settings, updateSettings, resetSettings } = useSettings();
-  const { theme, themeId, themeList, setThemeId } = useTheme();
+  const { alarm } = useWakeFlow();
+  // TESTING-ONLY START
+  const { scheduleTestRing, cancelTestRing } = useWakeFlow();
+  // TESTING-ONLY END
+  const { theme } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
-  const [devSimulatePro, setDevSimulatePro] = useState(false);
-  const [devCodeInput, setDevCodeInput] = useState('');
+  const [perms, setPerms] = useState<AlarmPermissions>(() => Alarm.getPermissions());
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') setPerms(Alarm.getPermissions());
+    });
+    return () => sub.remove();
+  }, []);
 
   const handleReset = () => {
     resetSettings();
@@ -28,150 +47,130 @@ export default function SettingsScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient colors={theme.ringingGradient} style={[styles.hero, { paddingTop: insets.top + 20 }]}>
-        <Text style={styles.heroLabel}>PERSONALIZE</Text>
+        <Text style={styles.heroLabel}>RELIABILITY</Text>
         <Text style={styles.heroTitle}>Settings</Text>
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* --- Appearance / theme picker --- */}
         <View style={styles.card}>
           <View style={[styles.leftBar, { backgroundColor: theme.accent }]} />
           <View style={styles.cardInner}>
             <View style={styles.cardHeaderRow}>
               <View style={[styles.iconBadge, { backgroundColor: `${theme.accent}26` }]}>
-                <Ionicons name="color-palette" size={18} color={theme.accent} />
+                <Ionicons name="shield-checkmark" size={18} color={theme.accent} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.cardTitle}>Theme</Text>
-                <Text style={styles.cardCaption}>Pick the look of every screen</Text>
+                <Text style={styles.cardTitle}>Phone settings</Text>
+                <Text style={styles.cardCaption}>All four must be on for a reliable alarm</Text>
               </View>
             </View>
 
-            <View style={styles.themeGrid}>
-              {themeList.map((t) => {
-                const isSelected = t.id === themeId;
-                return (
-                  <Pressable
-                    key={t.id}
-                    onPress={() => setThemeId(t.id)}
-                    style={styles.themeItem}
-                    accessibilityLabel={`Select ${t.name} theme`}
-                    accessibilityState={{ selected: isSelected }}
+            {PERMISSION_ROWS.map((row) => {
+              const ok = perms[row.key];
+              return (
+                <Pressable
+                  key={row.key}
+                  style={({ pressed }) => [styles.settingRow, pressed && styles.pressed]}
+                  onPress={() => Alarm.openSettings(row.page)}
+                  accessibilityLabel={`${row.label}: ${ok ? 'on' : 'off'}. Open settings.`}
+                >
+                  <View style={{ flex: 1, paddingRight: 12 }}>
+                    <Text style={styles.settingLabel}>{row.label}</Text>
+                    <Text style={styles.cardCaption}>{row.hint}</Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.settingValuePill,
+                      { backgroundColor: `${ok ? SEMANTIC_COLORS.success : SEMANTIC_COLORS.error}26` },
+                    ]}
                   >
-                    <View
-                      style={[
-                        styles.themeSwatch,
-                        {
-                          backgroundColor: t.accent,
-                          borderColor: isSelected ? t.accent : 'transparent',
-                          shadowColor: t.accent,
-                          shadowOpacity: isSelected ? 0.6 : 0,
-                        },
-                      ]}
+                    <Text
+                      style={[styles.settingValueText, { color: ok ? SEMANTIC_COLORS.success : SEMANTIC_COLORS.error }]}
                     >
-                      {isSelected && <Ionicons name="checkmark" size={22} color={t.accentText} />}
-                    </View>
-                    <Text style={[styles.themeName, isSelected && { color: theme.text, fontWeight: '800' }]}>
-                      {t.name}
+                      {ok ? 'On' : 'Fix'}
                     </Text>
-                    <Text style={styles.themeTagline}>{t.tagline}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+                  </View>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
-        <AppearanceMediaCard />
-
-        {/* --- Sound --- */}
         <View style={styles.card}>
-          <View style={[styles.leftBar, { backgroundColor: theme.accentSecondary || theme.accent }]} />
+          <View style={[styles.leftBar, { backgroundColor: theme.accent }]} />
           <View style={styles.cardInner}>
             <View style={styles.cardHeaderRow}>
-              <View style={[styles.iconBadge, { backgroundColor: `${(theme.accentSecondary || theme.accent)}26` }]}>
-                <Ionicons name="volume-high" size={18} color={theme.accentSecondary || theme.accent} />
+              <View style={[styles.iconBadge, { backgroundColor: `${theme.accent}26` }]}>
+                <Ionicons name="volume-high" size={18} color={theme.accent} />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cardTitle}>Alarm sound</Text>
-                <Text style={styles.cardCaption}>Custom tones coming in the next update</Text>
-              </View>
+              <Text style={styles.cardTitle}>Alarm volume</Text>
             </View>
-
             <View style={styles.settingRow}>
-              <Text style={styles.settingLabel}>Current tone</Text>
-              <View style={styles.settingValuePill}>
-                <Text style={styles.settingValueText}>Default</Text>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text style={styles.settingLabel}>Raise low alarm volume to 60% when ringing starts</Text>
+                <Text style={styles.cardCaption}>
+                  Off by default. When on: if your alarm volume is below 60% when the alarm starts, ClockGuard
+                  raises it once to 60%. It never forces the volume while ringing, and puts your previous alarm
+                  volume back when you snooze or disarm (unless you changed it yourself meanwhile). Only the
+                  alarm volume is touched, never media, ringtone or notification volume. Do Not Disturb settings
+                  can block the change.
+                </Text>
               </View>
+              <Switch
+                value={settings.volumeBoostEnabled}
+                onValueChange={(v) => updateSettings({ volumeBoostEnabled: v })}
+                trackColor={{ false: theme.border, true: theme.accent }}
+                thumbColor="#ffffff"
+                accessibilityLabel="Raise low alarm volume to 60% when ringing starts"
+              />
             </View>
           </View>
         </View>
 
-        {/* --- Developer testing --- */}
-        <View style={[styles.card, styles.devCard]}>
+        {/* TESTING-ONLY START: remove this card when testing tools are no longer wanted */}
+        <View style={styles.card}>
           <View style={[styles.leftBar, { backgroundColor: SEMANTIC_COLORS.warning }]} />
           <View style={styles.cardInner}>
             <View style={styles.cardHeaderRow}>
               <View style={[styles.iconBadge, { backgroundColor: `${SEMANTIC_COLORS.warning}26` }]}>
-                <Ionicons name="construct" size={18} color={SEMANTIC_COLORS.warning} />
+                <Ionicons name="flask" size={18} color={SEMANTIC_COLORS.warning} />
               </View>
-              <Text style={styles.cardTitle}>Developer testing</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cardTitle}>Test alarm (testing only)</Text>
+                <Text style={styles.cardCaption}>
+                  Rings through the real alarm engine 10 seconds after you tap. Lock the phone to test the lock
+                  screen. Your saved alarm is never changed. A test ring has an Exit test button.
+                </Text>
+              </View>
             </View>
-            <Text style={[styles.cardCaption, { marginBottom: 12 }]}>Remove before release</Text>
-            {settings.devUnlocked ? (
-              <>
-                <View style={styles.settingRow}>
-                  <View style={{ flex: 1, paddingRight: 12 }}>
-                    <Text style={styles.devLabel}>Simulate Pro</Text>
-                    <Text style={styles.cardCaption}>Preview locally. Not persisted, not real billing.</Text>
-                  </View>
-                  <Switch
-                    value={devSimulatePro}
-                    onValueChange={setDevSimulatePro}
-                    trackColor={{ false: theme.border, true: theme.accent }}
-                    thumbColor="#ffffff"
-                  />
-                </View>
-                <Pressable
-                  onPress={() => updateSettings({ devUnlocked: false })}
-                  accessibilityLabel="Lock developer testing"
-                  style={{ marginTop: 8, alignSelf: 'flex-start' }}
-                >
-                  <Text style={{ color: theme.textSecondary, fontSize: 12, textDecorationLine: 'underline' }}>Lock</Text>
-                </Pressable>
-              </>
+            {alarm.testRingAt > 0 ? (
+              <Pressable
+                style={({ pressed }) => [styles.resetButton, pressed && styles.pressed]}
+                onPress={cancelTestRing}
+                accessibilityLabel="Cancel pending test alarm"
+              >
+                <Ionicons name="close" size={16} color={SEMANTIC_COLORS.warning} />
+                <Text style={[styles.resetButtonText, { color: SEMANTIC_COLORS.warning }]}>
+                  Test pending at {new Date(alarm.testRingAt).toLocaleTimeString()}, tap to cancel
+                </Text>
+              </Pressable>
             ) : (
-              <View>
-                <Text style={styles.devLabel}>Enter code to unlock</Text>
-                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, alignItems: 'center' }}>
-                  <TextInput
-                    style={{ flex: 1, backgroundColor: theme.background, color: theme.text, padding: 12, borderRadius: 12, fontSize: 14, borderWidth: 1, borderColor: theme.border }}
-                    value={devCodeInput}
-                    onChangeText={setDevCodeInput}
-                    placeholder="Enter code"
-                    placeholderTextColor={theme.textSecondary}
-                    secureTextEntry
-                    autoCapitalize="none"
-                  />
-                  <Pressable
-                    style={{ backgroundColor: theme.accent, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12 }}
-                    onPress={() => {
-                      if (devCodeInput === 'Coderman880') {
-                        updateSettings({ devUnlocked: true });
-                      }
-                      setDevCodeInput('');
-                    }}
-                    accessibilityLabel="Unlock developer testing"
-                  >
-                    <Text style={{ color: theme.accentText, fontWeight: '700' }}>Unlock</Text>
-                  </Pressable>
-                </View>
-              </View>
+              <Pressable
+                style={({ pressed }) => [styles.resetButton, pressed && styles.pressed]}
+                onPress={() => {
+                  const error = scheduleTestRing(10);
+                  if (error) Alert.alert('Test not scheduled', error);
+                }}
+                accessibilityLabel="Ring a test alarm in 10 seconds"
+              >
+                <Ionicons name="alarm" size={16} color={SEMANTIC_COLORS.warning} />
+                <Text style={[styles.resetButtonText, { color: SEMANTIC_COLORS.warning }]}>Ring test alarm in 10 s</Text>
+              </Pressable>
             )}
           </View>
         </View>
+        {/* TESTING-ONLY END */}
 
-        {/* --- Danger zone --- */}
         <View style={styles.card}>
           <View style={[styles.leftBar, { backgroundColor: SEMANTIC_COLORS.error }]} />
           <View style={styles.cardInner}>
@@ -181,10 +180,16 @@ export default function SettingsScreen() {
               </View>
               <Text style={styles.cardTitle}>Danger zone</Text>
             </View>
+            {alarm.armed && (
+              <Text style={[styles.cardCaption, { marginBottom: 8 }]}>
+                Cancel the alarm first. Resetting while armed would delete the item and PIN the alarm needs.
+              </Text>
+            )}
             <Pressable
-              style={({ pressed }) => [styles.resetButton, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.resetButton, alarm.armed && { opacity: 0.4 }, pressed && styles.pressed]}
               onPress={() => setModalVisible(true)}
-              accessibilityLabel="Reset Alarm Settings"
+              disabled={alarm.armed}
+              accessibilityLabel="Reset all settings"
             >
               <Ionicons name="refresh" size={16} color={SEMANTIC_COLORS.error} />
               <Text style={styles.resetButtonText}>Reset all settings</Text>
@@ -193,33 +198,18 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
 
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
+      <Modal animationType="fade" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Reset settings?</Text>
             <Text style={styles.modalBody}>
-              This will return all settings to their defaults (07:00, Weekdays, Bathroom Toothpaste).
+              This clears your registered item, PIN and mission settings. You will need to set them up again before arming.
             </Text>
-
             <View style={styles.modalActions}>
-              <Pressable
-                style={styles.modalButton}
-                onPress={() => setModalVisible(false)}
-                accessibilityLabel="Cancel Reset"
-              >
+              <Pressable style={styles.modalButton} onPress={() => setModalVisible(false)} accessibilityLabel="Cancel reset">
                 <Text style={styles.modalButtonText}>Cancel</Text>
               </Pressable>
-
-              <Pressable
-                style={[styles.modalButton, styles.modalButtonDanger]}
-                onPress={handleReset}
-                accessibilityLabel="Confirm Reset"
-              >
+              <Pressable style={[styles.modalButton, styles.modalButtonDanger]} onPress={handleReset} accessibilityLabel="Confirm reset">
                 <Text style={styles.modalButtonTextDanger}>Reset</Text>
               </Pressable>
             </View>
