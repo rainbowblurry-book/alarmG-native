@@ -46,13 +46,14 @@ export default function SetupScreen() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [manualBarcode, setManualBarcode] = useState('');
 
-  const [pinDraft, setPinDraft] = useState(settings.snoozePin);
+  // The box is only a draft for a NEW PIN. The saved PIN (settings.snoozePin) stays
+  // active until a valid new one is saved, and is never shown in plain text.
+  const [pinDraft, setPinDraft] = useState('');
   const [pinError, setPinError] = useState<string | null>(null);
   const [pinSaved, setPinSaved] = useState(false);
 
-  useEffect(() => {
-    setPinDraft(settings.snoozePin);
-  }, [settings.snoozePin]);
+  const isPinSaved = /^\d{10}$/.test(settings.snoozePin);
+  const hasUnsavedPin = pinDraft.length > 0;
 
   const isBarcodeConfigured = Boolean(settings.wakeBarcode && settings.wakeBarcode.length > 0);
   const lastFour = isBarcodeConfigured ? settings.wakeBarcode.slice(-4) : '';
@@ -106,6 +107,7 @@ export default function SetupScreen() {
       return;
     }
     updateSettings({ snoozePin: pinDraft });
+    setPinDraft('');
     setPinError(null);
     setPinSaved(true);
     setTimeout(() => setPinSaved(false), 3000);
@@ -192,7 +194,30 @@ export default function SetupScreen() {
                 <Text style={styles.cardTitle}>Snooze PIN</Text>
                 <Text style={styles.cardCaption}>10 digits, required to snooze instead of scanning</Text>
               </View>
+              <View
+                style={[
+                  styles.statusChip,
+                  { backgroundColor: `${isPinSaved ? SEMANTIC_COLORS.success : SEMANTIC_COLORS.warning}26` },
+                ]}
+              >
+                <Ionicons
+                  name={isPinSaved ? 'checkmark-circle' : 'alert-circle'}
+                  size={12}
+                  color={isPinSaved ? SEMANTIC_COLORS.success : SEMANTIC_COLORS.warning}
+                />
+                <Text
+                  style={[styles.statusChipText, { color: isPinSaved ? SEMANTIC_COLORS.success : SEMANTIC_COLORS.warning }]}
+                >
+                  {isPinSaved ? 'Set' : 'Not set'}
+                </Text>
+              </View>
             </View>
+
+            <Text style={[styles.cardCaption, { marginBottom: 8 }]}>
+              {isPinSaved
+                ? `Current PIN ends in ••${settings.snoozePin.slice(-2)}. Type a new one below and tap Save PIN to change it.`
+                : 'No PIN saved yet. You need one before you can arm.'}
+            </Text>
 
             <TextInput
               style={styles.input}
@@ -202,7 +227,7 @@ export default function SetupScreen() {
                 setPinDraft(digitsOnly);
                 setPinError(null);
               }}
-              placeholder="Enter 10-digit PIN"
+              placeholder={isPinSaved ? 'New 10-digit PIN' : 'Enter 10-digit PIN'}
               placeholderTextColor={theme.textSecondary}
               keyboardType="number-pad"
               maxLength={10}
@@ -210,6 +235,11 @@ export default function SetupScreen() {
             />
 
             {pinError && <Text style={styles.statusMissing}>{pinError}</Text>}
+            {hasUnsavedPin && !pinError && isPinSaved && (
+              <Text style={styles.statusMissing}>
+                Not saved yet. Your current PIN (••{settings.snoozePin.slice(-2)}) stays active until you tap Save PIN.
+              </Text>
+            )}
             {pinSaved && (
               <View style={styles.successBadge}>
                 <Ionicons name="checkmark-circle" size={14} color="#052e1a" />
